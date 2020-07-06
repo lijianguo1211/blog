@@ -1,8 +1,7 @@
 <?php
-
 /** @var \Illuminate\Database\Eloquent\Factory $factory */
 
-use App\Models\Link;
+use App\Models\BlogDetail;
 use Faker\Generator as Faker;
 
 /*
@@ -15,10 +14,11 @@ use Faker\Generator as Faker;
 | model instances for testing / seeding your application's database.
 |
 */
-
-$factory->define(Link::class, function (Faker $faker) {
+static $level = 0;
+$factory->define(BlogDetail::class, function (Faker $faker) use ($level) {
     return [
-        'title' => $faker->title,
-        'title_slug' => $faker->url
+        'blog_id' => ++$level,
+        'content_html' => $faker->randomHtml(),
+        'content_md' => $faker->realText()
     ];
 });

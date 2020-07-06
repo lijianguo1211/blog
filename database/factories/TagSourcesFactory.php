@@ -1,8 +1,9 @@
 <?php
 
+
 /** @var \Illuminate\Database\Eloquent\Factory $factory */
 
-use App\Models\Link;
+use App\Models\Tag;
 use Faker\Generator as Faker;
 
 /*
@@ -16,9 +17,10 @@ use Faker\Generator as Faker;
 |
 */
 
-$factory->define(Link::class, function (Faker $faker) {
+$factory->define(Tag::class, function (Faker $faker) {
     return [
-        'title' => $faker->title,
-        'title_slug' => $faker->url
+        'tag_name' => $faker->city,
+        'tag_slug' => $faker->slug,
+        'parent' => 0
     ];
 });
