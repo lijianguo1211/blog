@@ -13,6 +13,7 @@
 
 Route::namespace('Home')->group(function ($group) {
     $group->get('/', 'IndexController@index');
+    $group->get('test', 'IndexController@test');
 });
 
 

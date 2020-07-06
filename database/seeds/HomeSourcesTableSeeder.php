@@ -13,15 +13,6 @@ class HomeSourcesTableSeeder extends Seeder
      */
     public function run()
     {
-        $factory = new Factory(new Generator);
-        $generator = new Generator;
-        $factory->define(\App\Models\HomeSource::class, function (Generator $generator) {
-            return [
-                'theme' => $generator->title,
-                'content' => $generator->text(200),
-                'author' => $generator->name,
-                'from_there' => $generator->url,
-            ];
-        });
+        factory(\App\Models\HomeSource::class)->times(30)->create();
     }
 }
