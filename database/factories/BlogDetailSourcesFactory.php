@@ -14,8 +14,9 @@ use Faker\Generator as Faker;
 | model instances for testing / seeding your application's database.
 |
 */
-static $level = 0;
-$factory->define(BlogDetail::class, function (Faker $faker) use ($level) {
+
+$factory->define(BlogDetail::class, function (Faker $faker) {
+    static $level = 0;
     return [
         'blog_id' => ++$level,
         'content_html' => $faker->randomHtml(),

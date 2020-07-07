@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
+
     <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="" />
+
+    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="" />
+
+    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/database/factories/BlogDetailSourcesFactory.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/database/factories/BlogSourcesFactory.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/database/factories/CategorySourcesFactory.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/database/factories/TagSourcesFactory.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/database/factories/LinkFactory.php" beforeDir="false" afterPath="$PROJECT_DIR$/database/factories/LinkFactory.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/database/migrations/2020_07_06_054653_create_jay_blogs_table.php" beforeDir="false" afterPath="$PROJECT_DIR$/database/migrations/2020_07_06_054653_create_jay_blogs_table.php" afterDir="false" />
+    </list>
+>>>>>>> bfd81276a19b1a2d17db2446a21946148a3d9cdc
+>>>>>>> 5eea7c3758a55f4a54a71b7eec35e3e0558c01cf
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -150,7 +165,9 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/database/factories" />
+
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -220,6 +237,7 @@
       <workItem from="1593950022624" duration="4569000" />
       <workItem from="1593957979018" duration="6292000" />
       <workItem from="1593999192340" duration="10801000" />
+      <workItem from="1594033029311" duration="86000" />
     </task>
     <servers />
   </component>

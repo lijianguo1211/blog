@@ -18,7 +18,7 @@ use Faker\Generator as Faker;
 $factory->define(Blog::class, function (Faker $faker) {
     return [
         'title' => $faker->title,
-        'img_path' => $faker->image(),
+        'img_path' => $faker->image(storage_path('app/public')),
         'key_word' => $faker->word(),
         'post_status' => mt_rand(1, 5),
         'source' => mt_rand(1, 3)

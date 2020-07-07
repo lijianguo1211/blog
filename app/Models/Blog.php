@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Blog extends Model
@@ -12,6 +13,11 @@ class Blog extends Model
         "title", "img_path", "key_word", "user_id", "sort", "post_status",
         "source", "is_series", "is_top"
     ];
+
+    public function getCreatedAtAttribute($value)
+    {
+        return Carbon::parse($value)->isoFormat('LL') .  ' by';
+    }
 
     public function BlogDetail()
     {
