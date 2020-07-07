@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/database/factories/BlogDetailSourcesFactory.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database/factories/BlogSourcesFactory.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database/factories/CategorySourcesFactory.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database/factories/TagSourcesFactory.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/factories/LinkFactory.php" beforeDir="false" afterPath="$PROJECT_DIR$/database/factories/LinkFactory.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/migrations/2020_07_06_054653_create_jay_blogs_table.php" beforeDir="false" afterPath="$PROJECT_DIR$/database/migrations/2020_07_06_054653_create_jay_blogs_table.php" afterDir="false" />
-    </list>
+    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -293,10 +285,10 @@
     </state>
     <state x="499" y="283" key="NewPhpFileDialog/0.0.1366.728@0.0.1366.728" timestamp="1594050269035" />
     <state x="888" y="347" key="NewPhpFileDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1594013143534" />
-    <state x="339" y="188" key="com.intellij.ide.util.TipDialog" timestamp="1593958001407">
+    <state x="339" y="188" key="com.intellij.ide.util.TipDialog" timestamp="1594128253900">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state x="339" y="188" key="com.intellij.ide.util.TipDialog/0.0.1366.728@0.0.1366.728" timestamp="1593958001407" />
+    <state x="339" y="188" key="com.intellij.ide.util.TipDialog/0.0.1366.728@0.0.1366.728" timestamp="1594128253900" />
     <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1594013637983">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
