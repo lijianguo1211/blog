@@ -1,21 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/Service/HomeLinkService.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/Service/HomeSourceService.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database/factories/HomeSourcesFactory.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/database/factories/LinkFactory.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/resources/views/home/index/test.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Models/HomeSource.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Models/HomeSource.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/composer.json" beforeDir="false" afterPath="$PROJECT_DIR$/composer.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/database/seeds/HomeSourcesTableSeeder.php" beforeDir="false" afterPath="$PROJECT_DIR$/database/seeds/HomeSourcesTableSeeder.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/routes/web.php" afterDir="false" />
-    </list>
+    <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -132,7 +118,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="E:/work/project/laravel-blog" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -186,6 +172,7 @@
       <workItem from="1593950022624" duration="4569000" />
       <workItem from="1593957979018" duration="6292000" />
       <workItem from="1593999192340" duration="10801000" />
+      <workItem from="1594033029311" duration="86000" />
     </task>
     <servers />
   </component>
