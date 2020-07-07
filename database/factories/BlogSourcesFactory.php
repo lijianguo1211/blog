@@ -1,8 +1,7 @@
 <?php
-
 /** @var \Illuminate\Database\Eloquent\Factory $factory */
 
-use App\Models\Link;
+use App\Models\Blog;
 use Faker\Generator as Faker;
 
 /*
@@ -16,9 +15,12 @@ use Faker\Generator as Faker;
 |
 */
 
-$factory->define(Link::class, function (Faker $faker) {
+$factory->define(Blog::class, function (Faker $faker) {
     return [
         'title' => $faker->title,
-        'title_slug' => $faker->url
+        'img_path' => $faker->image(),
+        'key_word' => $faker->word(),
+        'post_status' => mt_rand(1, 5),
+        'source' => mt_rand(1, 3)
     ];
 });
