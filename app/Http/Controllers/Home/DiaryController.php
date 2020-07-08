@@ -9,10 +9,10 @@
 
 namespace App\Http\Controllers\Home;
 
-
-use App\Http\Controllers\Controller;
-
-class DiaryController extends Controller
+class DiaryController extends BaseController
 {
-
+    public function index()
+    {
+        return view('home.diary.index')->with($this->shareData);
+    }
 }

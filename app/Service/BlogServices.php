@@ -11,7 +11,9 @@ namespace App\Service;
 
 
 use App\Models\Blog;
+use Illuminate\Queue\Capsule\Manager;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class BlogServices implements HomeInterface
 {
@@ -23,9 +25,24 @@ class BlogServices implements HomeInterface
 
     private $isNoTop = 0;
 
+    private $rankingNumber = 9;
+
     public function __construct()
     {
         $this->blog = new Blog();
+    }
+
+    /**
+     * @return int
+     */
+    public function getRankingNumber(): int
+    {
+        return $this->rankingNumber;
+    }
+
+    public function setRankingNumber(int $number)
+    {
+        $this->rankingNumber = $number;
     }
 
     /**
@@ -48,22 +65,70 @@ class BlogServices implements HomeInterface
         // TODO: Implement getData() method.
         return [
             'topBlog' => $this->isTopBlog(),
-            'allBlog' => $this->blogAll()
+            'allBlog' => $this->blogAll(),
+            'rankingList' => $this->rankingList(),
         ];
+    }
+
+
+    public function showDetail(int $id)
+    {
+        return [
+            'rankingList' => $this->rankingList(),
+            'blogDetail' => $this->showBlog($id),
+        ];
+    }
+
+    /**
+     * Notes: 文章详情数据查询
+     * User: LiYi
+     * Date: 2020/7/8 0008
+     * Time: 13:38
+     * @param int $id
+     * @return array
+     */
+    protected function showBlog(int $id)
+    {
+        try {
+            $result = $this->blog->newQuery()
+                ->where('id', $id)
+                ->where('post_status', $this->getPostStatus())
+                ->orderBy('sort')
+                ->with(['BlogDetail' => function ($query) {
+                    $query->select('blog_id', 'content_md', 'id');
+                }])
+                ->with('tags')
+                ->with('categories')
+                ->first();
+
+            if (empty($result)) {
+                throw new \Exception("文章详情数据不存在！！！");
+            }
+
+            $result = $result->toArray();
+            $this->blog->newQuery()->where('id', $id)->increment('reading_volume');
+        } catch (\Exception $e) {
+            $result = [];
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
+        }
+
+        return $result;
     }
 
     protected function isTopBlog()
     {
         try {
-            $result = $this->blog->newQuery()
+            $result = $this->blog
+                ->append('post_content_info')
                 ->where('is_top', $this->isTop)
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
-                ->with('BlogDetail')
+                ->with(['BlogDetail' => function ($query) {
+                    $query->select('blog_id', 'content_md', 'id');
+                }])
                 ->with('tags')
                 ->with('categories')
                 ->first();
-
             if (empty($result)) {
                 throw new \Exception("置顶文章为空");
             }
@@ -81,10 +146,13 @@ class BlogServices implements HomeInterface
     protected function blogAll()
     {
         try {
-            $result = $this->blog->newQuery()->where('post_status', $this->getPostStatus())
+            $result = $this->blog->append('post_content_info')
+                ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
                 ->where("is_top", $this->isNoTop)
-                ->with('BlogDetail')
+                ->with(['BlogDetail' => function ($query) {
+                    $query->select('blog_id', 'content_md', 'id');
+                }])
                 ->with('tags')
                 ->with('categories')
                 ->limit(9)->get()->toArray();
@@ -95,4 +163,31 @@ class BlogServices implements HomeInterface
 
         return $result;
     }
+
+    /**
+     * Notes: 阅读排行榜
+     * User: LiYi
+     * Date: 2020/7/8 0008
+     * Time: 13:29
+     * @return string[]
+     */
+    protected function rankingList()
+    {
+        try {
+            $result = $this->blog->where('post_status', $this->getPostStatus())
+                ->orderByDesc('reading_volume')
+                ->limit($this->getRankingNumber())
+                ->get(['title', 'id'])->toArray();
+        } catch (\Exception $e) {
+            $result = [
+                'id' => '',
+                'title' => '',
+            ];
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
+        }
+
+        return $result;
+    }
+
+
 }

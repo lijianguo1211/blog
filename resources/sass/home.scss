@@ -118,3 +118,40 @@ h1, h2, h3, h4, h5, h6 {
         font-size: 3.5rem;
     }
 }
+
+code {
+    background-color: #0d405b;
+    color: #ecf3f3;
+    padding: 2px;
+    border-radius: 5px;
+}
+pre {
+    background-color: #0d405b;
+}
+pre code {
+    color: #00e0e0;
+    background-color: #0d405b;
+    //word-wrap: break-word;
+    padding: 15px 20px 15px 20px;
+    white-space: pre-wrap;
+    max-width: inherit;
+    display: block;
+    margin: 0;
+    overflow: initial;
+    line-height: 24px;
+    word-wrap: normal;
+    border: 0;
+    text-align: left;
+    tab-size: 4;
+    hyphens: none;
+}
+
+.meta {
+    margin-bottom: 16px;
+    margin-top: -40px;
+}
+.new_a_liyi {
+    text-decoration: none!important;
+    cursor: pointer;
+    color: #584444!important;
+}

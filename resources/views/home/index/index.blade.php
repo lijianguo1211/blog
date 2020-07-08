@@ -54,18 +54,24 @@
                 </h3>
                 @if(!empty($topBlog))
                     <div class="blog-post">
-                        <h2 class="blog-post-title">{{ $topBlog['title'] }}</h2>
+                        <h2 class="blog-post-title">
+                            <a href="{{ route('blog_details', ['id' => $topBlog['id']]) }}">{{ $topBlog['title'] }}</a>
+                        </h2>
                         <p class="blog-post-meta">{{ $topBlog['created_at'] }} <a href="#">Mark</a></p>
-                        {!! $topBlog['blog_detail']['content_html'] !!}
+                        {!! $topBlog['blog_detail']['post_content_info'] !!}
                     </div>
                 @endif
 
                 @if(!empty($allBlog))
                     @foreach($allBlog as $item)
                         <div class="blog-post">
-                            <h2 class="blog-post-title">{{ $item['title'] }}</h2>
+                            <h2 class="blog-post-title">
+                                <a href="{{ route('blog_details', ['id' => $item['id']]) }}">
+                                    {{ $item['title'] }}
+                                </a>
+                            </h2>
                             <p class="blog-post-meta">{{ $item['created_at'] }} <a href="#">Mark</a></p>
-                            {!! $item['blog_detail']['content_md'] !!}
+                            {!! $item['blog_detail']['post_content_info'] !!}
                         </div>
                     @endforeach
                 @endif
@@ -100,20 +106,11 @@
                 </div>
 
                 <div class="p-4">
-                    <h4 class="font-italic">博主推荐</h4>
+                    <h4 class="font-italic">阅读推荐</h4>
                     <ol class="list-unstyled mb-0">
-                        <li><a href="#">March 2014</a></li>
-                        <li><a href="#">February 2014</a></li>
-                        <li><a href="#">January 2014</a></li>
-                        <li><a href="#">December 2013</a></li>
-                        <li><a href="#">November 2013</a></li>
-                        <li><a href="#">October 2013</a></li>
-                        <li><a href="#">September 2013</a></li>
-                        <li><a href="#">August 2013</a></li>
-                        <li><a href="#">July 2013</a></li>
-                        <li><a href="#">June 2013</a></li>
-                        <li><a href="#">May 2013</a></li>
-                        <li><a href="#">April 2013</a></li>
+                        @foreach($rankingList as $item)
+                            <li><a href="{{ route('blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                        @endforeach
                     </ol>
                 </div>
 

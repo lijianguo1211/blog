@@ -45,7 +45,7 @@
         </div>
         <div class="cd-timeline-block">
             <div class="cd-timeline-img cd-movie">
-                <img src="img/cd-icon-movie.svg" alt="Movie">
+                <img src="image/cd-icon-movie.svg" alt="Movie">
             </div>
 
             <div class="cd-timeline-content">
@@ -57,7 +57,7 @@
         </div>
         <div class="cd-timeline-block">
             <div class="cd-timeline-img cd-movie">
-                <img src="img/cd-icon-location.svg" alt="Location">
+                <img src="image/cd-icon-location.svg" alt="Location">
             </div>
 
             <div class="cd-timeline-content">
