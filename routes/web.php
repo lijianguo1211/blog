@@ -12,8 +12,10 @@
 */
 
 Route::namespace('Home')->group(function ($group) {
-    $group->get('/', 'IndexController@index');
-    $group->get('test', 'IndexController@test');
+    $group->get('/', 'IndexController@index')->name('/');
+    $group->get('blog', 'BlogController@index')->name('blog');
+    $group->get('blog/{id}', 'BlogDetailController@index')->name('blog_details');
+    $group->get('diary', 'DiaryController@index')->name('diary');
 });
 
 

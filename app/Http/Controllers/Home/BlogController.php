@@ -9,10 +9,14 @@
 
 namespace App\Http\Controllers\Home;
 
+use App\Service\BlogServices;
 
-use App\Http\Controllers\Controller;
-
-class BlogController extends Controller
+class BlogController extends BaseController
 {
+    public function index()
+    {
+
+    }
+
 
 }
