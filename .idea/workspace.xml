@@ -2,7 +2,23 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/app/App/Models/Diaru.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/AjaxController.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/Service/AjaxService.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/database/seeds/JayDiaryTableSeeder.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/resources/js/blog_detail.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/Service/BlogServices.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Service/BlogServices.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/css/app.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/css/app.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/css/home.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/js/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/public/js/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/js/bootstrap.js" beforeDir="false" afterPath="$PROJECT_DIR$/resources/js/bootstrap.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/sass/home.scss" beforeDir="false" afterPath="$PROJECT_DIR$/resources/sass/home.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/sass/import_package.scss" beforeDir="false" afterPath="$PROJECT_DIR$/resources/sass/import_package.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/views/home/blog_detail/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/blog_detail/index.blade.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -12,6 +28,9 @@
   <component name="ComposerSettings" doNotAsk="true" synchronizationState="SYNCHRONIZE">
     <pharConfigPath>$PROJECT_DIR$/composer.json</pharConfigPath>
     <execution />
+  </component>
+  <component name="FavoritesManager">
+    <favorites_list name="blog" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -151,7 +170,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="E:/work/project/laravel-blog" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -162,12 +181,12 @@
     <property name="php.override.implement.member.chooser.php.doc" value="NONE" />
   </component>
   <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="F:\LIYI\laravel-7\blog\database\factories" />
-    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="F:\LIYI\laravel-7\blog\app\Models" />
       <recent name="F:\LIYI\laravel-7\laravel\app\Models" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="F:\LIYI\laravel-7\blog\database\factories" />
     </key>
   </component>
   <component name="RunManager" selected="PHP Script.test.php">
@@ -248,27 +267,27 @@
       <screen x="0" y="0" width="1366" height="728" />
     </state>
     <state x="290" y="134" key="EditFileWatcherDialog/0.0.1366.728@0.0.1366.728" timestamp="1593955470973" />
-    <state x="740" y="274" key="FileChooserDialogImpl" timestamp="1594188564506">
+    <state x="740" y="274" key="FileChooserDialogImpl" timestamp="1594260875980">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="740" y="274" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1594188564506" />
-    <state width="1323" height="149" key="GridCell.Tab.0.bottom" timestamp="1593960168058">
+    <state x="740" y="274" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1594260875980" />
+    <state width="1323" height="141" key="GridCell.Tab.0.bottom" timestamp="1594139539019">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="149" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1593960168058" />
-    <state width="1323" height="149" key="GridCell.Tab.0.center" timestamp="1593960168058">
+    <state width="1323" height="141" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1594139539019" />
+    <state width="1323" height="141" key="GridCell.Tab.0.center" timestamp="1594139539019">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="149" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1593960168058" />
-    <state width="1323" height="149" key="GridCell.Tab.0.left" timestamp="1593960168058">
+    <state width="1323" height="141" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1594139539019" />
+    <state width="1323" height="141" key="GridCell.Tab.0.left" timestamp="1594139539019">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="149" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1593960168058" />
-    <state width="1323" height="149" key="GridCell.Tab.0.right" timestamp="1593960168058">
+    <state width="1323" height="141" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1594139539019" />
+    <state width="1323" height="141" key="GridCell.Tab.0.right" timestamp="1594139539019">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="149" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1593960168058" />
-    <state x="582" y="230" key="NewPhpClassDialog" timestamp="1594186942441">
+    <state width="1323" height="141" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1594139539019" />
+    <state x="582" y="230" key="NewPhpClassDialog" timestamp="1594013350318">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="414" y="161" key="NewPhpClassDialog/0.0.1366.728@0.0.1366.728" timestamp="1593963540415" />

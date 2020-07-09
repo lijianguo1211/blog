@@ -11,10 +11,13 @@
 |
 */
 
-Route::namespace('Home')->group(function ($group) {
+Route::namespace('Home')->as('home.')->group(function ($group) {
     $group->get('/', 'IndexController@index')->name('/');
     $group->get('blog', 'BlogController@index')->name('blog');
     $group->get('blog/{id}', 'BlogDetailController@index')->name('blog_details');
+    $group->get('blog/add/{id}', 'AjaxController@addLikes')->name('addLikes');
+    $group->get('blog/remove/{id}', 'AjaxController@removeLikes')->name('removeLikes');
+    $group->post('blog/comment/{id}', 'AjaxController@comment')->name('comment');
     $group->get('diary', 'DiaryController@index')->name('diary');
 });
 

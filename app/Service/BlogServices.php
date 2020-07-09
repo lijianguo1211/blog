@@ -91,6 +91,7 @@ class BlogServices implements HomeInterface
     {
         try {
             $result = $this->blog->newQuery()
+                ->where('id', $id)
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
                 ->with(['BlogDetail' => function ($query) {
@@ -105,10 +106,10 @@ class BlogServices implements HomeInterface
             }
 
             $result = $result->toArray();
-
+            $this->blog->newQuery()->where('id', $id)->increment('reading_volume');
         } catch (\Exception $e) {
             $result = [];
-            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage(), $error);
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
         }
 
         return $result;

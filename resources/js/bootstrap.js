@@ -17,6 +17,48 @@ try {
     require('bootstrap');
 } catch (e) {}
 
+require('./blog_detail');
+
+//编辑器 stackedit.js
+// import Stackedit from 'stackedit-js';
+//
+// const el = document.querySelector('textarea');
+// const stackedit = new Stackedit();
+//
+// // Open the iframe
+// stackedit.openFile({
+//     name: 'Filename', // with an optional filename
+//     content: {
+//         text: el.value // and the Markdown content.
+//     }
+// });
+//
+// // Listen to StackEdit events and apply the changes to the textarea.
+// stackedit.on('fileChange', (file) => {
+//     el.value = file.content.text;
+// });
+
+import SimpleMDE from 'simplemde';
+
+const simplemde = new SimpleMDE({
+    element: document.getElementById("liyi_post_detail_comment"),
+    // autofocus:true,自动对焦
+    autosave: {
+        enabled: true,
+        uniqueId: "MyUniqueID",
+        delay: 1000
+    },
+    status: ["autosave", "lines", "words"],
+    //spellChecker: false,拼写检查器
+    promptURLs: true,
+    toolbar: [
+        "bold", "italic", "strikethrough", "heading", "code", "quote", "unordered-list",
+        "ordered-list", "clean-block", "link", "image", "table", "horizontal-rule", "preview", "side-by-side", "fullscreen"
+    ]
+});
+
+window.simplemde = simplemde;
+
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
