@@ -10,18 +10,26 @@
             <div class="col-md-8 blog-main">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('home./') }}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('home.index') }}">Home</a></li>
                         <li class="breadcrumb-item"><a href="{{ route('home.blog') }}">Blog</a></li>
                         <li class="breadcrumb-item active" aria-current="page">分类</li>
                     </ol>
                 </nav>
                 @if(!empty($blogDetail))
                     <div class="blog-post">
-                        <h2 class="blog-post-title">{{ $blogDetail['title'] }}</h2>
-                        <p class="blog-post-meta">{{ $blogDetail['created_at'] }} <a href="#">Mark</a></p>
+                        <div>
+                            <h2 class="blog-post-title">{{ $blogDetail['title'] }}</h2>
+                            <p class="blog-post-meta">{{ $blogDetail['created_at'] }} <a href="#">Mark</a></p>
+{{--                            <svg class="bi bi-eye-fill float-right" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">--}}
+{{--                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>--}}
+{{--                                <path fill-rule="evenodd" d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>--}}
+{{--                            </svg>--}}
+                        </div>
+
                         <div class="language-php-jay">
                             {!! $blogDetail['blog_detail']['content_md'] !!}
                         </div>
+
                     </div>
                 @endif
 
@@ -83,7 +91,7 @@
                 <div class="p-4 mb-3 bg-light rounded">
                     @empty($homeSources)
                         <h4 class="font-italic">
-                            <a href="/" target="_blank">
+                            <a  class="text-dark" href="/" target="_blank">
                                 吃瓜
                             </a>
                         </h4>
@@ -106,7 +114,7 @@
                     <h4 class="font-italic">阅读推荐</h4>
                     <ol class="list-unstyled mb-0">
                         @foreach($rankingList as $item)
-                            <li><a href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
                         @endforeach
                     </ol>
                 </div>
@@ -114,18 +122,9 @@
                 <div class="p-4">
                     <h4 class="font-italic">点击排行榜</h4>
                     <ol class="list-unstyled mb-0">
-                        <li><a href="#">March 2014</a></li>
-                        <li><a href="#">February 2014</a></li>
-                        <li><a href="#">January 2014</a></li>
-                        <li><a href="#">December 2013</a></li>
-                        <li><a href="#">November 2013</a></li>
-                        <li><a href="#">October 2013</a></li>
-                        <li><a href="#">September 2013</a></li>
-                        <li><a href="#">August 2013</a></li>
-                        <li><a href="#">July 2013</a></li>
-                        <li><a href="#">June 2013</a></li>
-                        <li><a href="#">May 2013</a></li>
-                        <li><a href="#">April 2013</a></li>
+                        @foreach($likesList as $item)
+                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                        @endforeach
                     </ol>
                 </div>
 
@@ -133,15 +132,14 @@
                     <h4 class="font-italic">友情链接</h4>
                     <ol class="list-unstyled">
                         @empty($linkService)
-                            <li><a target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
-                            <li><a target="_blank" href="https://github.com/">GitHub</a></li>
-                            <li><a target="_blank" href="https://laravel.com/">Laravel</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://github.com/">GitHub</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://laravel.com/">Laravel</a></li>
                         @else
                             @foreach($linkService as $item)
-                                <li><a target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
+                                <li><a class="text-secondary" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
                             @endforeach
                         @endempty
-
                     </ol>
                 </div>
             </aside><!-- /.blog-sidebar -->

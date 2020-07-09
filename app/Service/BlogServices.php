@@ -27,9 +27,23 @@ class BlogServices implements HomeInterface
 
     private $rankingNumber = 9;
 
+    private $likesNumber = 9;
+
     public function __construct()
     {
         $this->blog = new Blog();
+    }
+
+    public function getLikesNumber()
+    {
+        return $this->likesNumber;
+    }
+
+    public function setLikesNumber(int $number)
+    {
+        $this->likesNumber = $number;
+
+        return $this;
     }
 
     /**
@@ -67,6 +81,7 @@ class BlogServices implements HomeInterface
             'topBlog' => $this->isTopBlog(),
             'allBlog' => $this->blogAll(),
             'rankingList' => $this->rankingList(),
+            'likesList' => $this->likesList(),
         ];
     }
 
@@ -76,6 +91,7 @@ class BlogServices implements HomeInterface
         return [
             'rankingList' => $this->rankingList(),
             'blogDetail' => $this->showBlog($id),
+            'likesList' => $this->likesList(),
         ];
     }
 
@@ -180,7 +196,25 @@ class BlogServices implements HomeInterface
                 ->get(['title', 'id'])->toArray();
         } catch (\Exception $e) {
             $result = [
-                'id' => '',
+                'id' => 0,
+                'title' => '',
+            ];
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
+        }
+
+        return $result;
+    }
+
+    public function likesList()
+    {
+        try {
+            $result = $this->blog->where('post_status', $this->getPostStatus())
+                ->orderByDesc('likes_volume')
+                ->limit($this->getLikesNumber())
+                ->get(['title', 'id'])->toArray();
+        } catch (\Exception $e) {
+            $result = [
+                'id' => 0,
                 'title' => '',
             ];
             \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());

@@ -15,6 +15,7 @@ class IndexController extends BaseController
     public function index(BlogServices $blogServices)
     {
         $resultBlog = $blogServices->getData();
+
         return view('home.index.index')->with(array_merge($this->shareData, $resultBlog));
     }
 }
