@@ -2,20 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d4edea3f-42e8-4841-a619-ded17be59c8a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/BaseController.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/BlogDetailController.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/resources/views/home/blog/index.blade.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/resources/views/home/blog_detail/index.blade.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/Home/BlogController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/BlogController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/Home/DiaryController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/DiaryController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Models/BlogDetail.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Models/BlogDetail.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Service/BlogServices.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Service/BlogServices.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/logging.php" beforeDir="false" afterPath="$PROJECT_DIR$/config/logging.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/home/diary/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/diary/index.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -164,7 +151,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="E:/work/project/laravel-blog" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -203,8 +190,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="PHP Script.test.php" />
         <item itemvalue="npm.watch-poll" />
+        <item itemvalue="PHP Script.test.php" />
       </list>
     </recent_temporary>
   </component>
@@ -224,6 +211,8 @@
       <workItem from="1593999192340" duration="10801000" />
       <workItem from="1594033029311" duration="86000" />
       <workItem from="1594185717203" duration="2846000" />
+      <workItem from="1594204829699" duration="44000" />
+      <workItem from="1594257193643" duration="326000" />
     </task>
     <servers />
   </component>
