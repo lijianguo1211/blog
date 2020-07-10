@@ -3,15 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="eb67926e-a2e5-42f1-a987-dd347372f85e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/App/Models/Diaru.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Http/Controllers/Home/IndexController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Service/BlogServices.php" beforeDir="false" afterPath="$PROJECT_DIR$/app/Service/BlogServices.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/css/app.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/css/app.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/css/home.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/js/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/public/js/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/home/blog_detail/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/blog_detail/index.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" beforeDir="false" afterPath="$PROJECT_DIR$/resources/views/home/index/index.blade.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -275,22 +266,22 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="740" y="274" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1594260875980" />
-    <state width="1323" height="141" key="GridCell.Tab.0.bottom" timestamp="1594303811383">
+    <state width="1323" height="141" key="GridCell.Tab.0.bottom" timestamp="1594313130600">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="141" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1594303811383" />
-    <state width="1323" height="141" key="GridCell.Tab.0.center" timestamp="1594303811383">
+    <state width="1323" height="141" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1594313130600" />
+    <state width="1323" height="141" key="GridCell.Tab.0.center" timestamp="1594313130600">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="141" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1594303811383" />
-    <state width="1323" height="141" key="GridCell.Tab.0.left" timestamp="1594303811382">
+    <state width="1323" height="141" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1594313130600" />
+    <state width="1323" height="141" key="GridCell.Tab.0.left" timestamp="1594313130600">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="141" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1594303811382" />
-    <state width="1323" height="141" key="GridCell.Tab.0.right" timestamp="1594303811383">
+    <state width="1323" height="141" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1594313130600" />
+    <state width="1323" height="141" key="GridCell.Tab.0.right" timestamp="1594313130600">
       <screen x="0" y="0" width="1366" height="728" />
     </state>
-    <state width="1323" height="141" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1594303811383" />
+    <state width="1323" height="141" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1594313130600" />
     <state x="582" y="230" key="NewPhpClassDialog" timestamp="1594013350318">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
