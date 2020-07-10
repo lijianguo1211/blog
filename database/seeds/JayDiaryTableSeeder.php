@@ -11,6 +11,6 @@ class JayDiaryTableSeeder extends Seeder
      */
     public function run()
     {
-        //
+        factory(\App\Models\Diary::class)->times(20)->create();
     }
 }

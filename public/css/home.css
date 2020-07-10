@@ -191,3 +191,21 @@ h6 {
   float: right;
 }
 
+.jay-max-blog-detail-3 {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal !important;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.tag-right {
+  margin-right: 5px;
+}
+
+.a-remove-line {
+  text-decoration: none !important;
+}
+

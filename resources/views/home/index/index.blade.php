@@ -86,7 +86,7 @@
                 <div class="p-4 mb-3 bg-light rounded">
                     @empty($homeSources)
                         <h4 class="font-italic">
-                            <a class="text-dark" href="{{ route('home.index') }}" target="_blank">
+                            <a class="text-dark a-remove-line" href="{{ route('home.index') }}" target="_blank">
                                 吃瓜
                             </a>
                         </h4>
@@ -95,7 +95,7 @@
                         </p>
                     @else
                         <h4 class="font-italic">
-                            <a href="{{ $homeSources['from_there'] }}" target="_blank">
+                            <a class="text-dark a-remove-line" href="{{ $homeSources['from_there'] }}" target="_blank">
                                 {{ $homeSources['theme'] }}
                             </a>
                         </h4>
@@ -109,7 +109,7 @@
                     <h4 class="font-italic">阅读推荐</h4>
                     <ol class="list-unstyled mb-0">
                         @foreach($rankingList as $item)
-                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <li><a class="text-secondary a-remove-line" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
                         @endforeach
                     </ol>
                 </div>
@@ -118,7 +118,7 @@
                     <h4 class="font-italic">点击排行榜</h4>
                     <ol class="list-unstyled mb-0">
                         @foreach($likesList as $item)
-                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <li><a class="text-secondary a-remove-line" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
                         @endforeach
                     </ol>
                 </div>
@@ -127,12 +127,12 @@
                     <h4 class="font-italic">友情链接</h4>
                     <ol class="list-unstyled">
                         @empty($linkService)
-                            <li><a class="text-secondary" target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
-                            <li><a class="text-secondary" target="_blank" href="https://github.com/">GitHub</a></li>
-                            <li><a class="text-secondary" target="_blank" href="https://laravel.com/">Laravel</a></li>
+                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
+                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://github.com/">GitHub</a></li>
+                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://laravel.com/">Laravel</a></li>
                         @else
                             @foreach($linkService as $item)
-                                <li><a class="text-secondary" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
+                                <li><a class="text-secondary a-remove-line" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
                             @endforeach
                         @endempty
 

@@ -13,10 +13,10 @@ use App\Service\BlogServices;
 
 class BlogController extends BaseController
 {
-    public function index()
+    public function index(BlogServices $blogServices)
     {
+        $result = $blogServices->onlyBlogList();
 
+        return view('home.blog.index')->with(array_merge($this->shareData, $result));
     }
-
-
 }

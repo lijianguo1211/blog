@@ -14,5 +14,8 @@ use App\Http\Controllers\Controller;
 
 class SourceController extends Controller
 {
-
+    public function index()
+    {
+        return redirect()->back();
+    }
 }

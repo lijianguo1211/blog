@@ -19,6 +19,7 @@ Route::namespace('Home')->as('home.')->group(function ($group) {
     $group->get('blog/remove/{id}', 'AjaxController@removeLikes')->name('removeLikes');
     $group->post('blog/comment/{id}', 'AjaxController@comment')->name('comment');
     $group->get('diary', 'DiaryController@index')->name('diary');
+    $group->get('source', 'SourceController@index')->name('source');
 });
 
 
