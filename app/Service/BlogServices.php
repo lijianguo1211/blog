@@ -25,11 +25,43 @@ class BlogServices implements HomeInterface
 
     private $isNoTop = 0;
 
+    private $blogNumber = 9;
+
     private $rankingNumber = 9;
+
+    private $likesNumber = 9;
+
+    const TAG = 1;
+
+    const CATEGORY = 2;
 
     public function __construct()
     {
         $this->blog = new Blog();
+    }
+
+    public function getBlogNumber()
+    {
+        return $this->likesNumber;
+    }
+
+    public function setBlogNumber(int $number)
+    {
+        $this->blogNumber = $number;
+
+        return $this;
+    }
+
+    public function getLikesNumber()
+    {
+        return $this->likesNumber;
+    }
+
+    public function setLikesNumber(int $number)
+    {
+        $this->likesNumber = $number;
+
+        return $this;
     }
 
     /**
@@ -67,6 +99,7 @@ class BlogServices implements HomeInterface
             'topBlog' => $this->isTopBlog(),
             'allBlog' => $this->blogAll(),
             'rankingList' => $this->rankingList(),
+            'likesList' => $this->likesList(),
         ];
     }
 
@@ -76,7 +109,13 @@ class BlogServices implements HomeInterface
         return [
             'rankingList' => $this->rankingList(),
             'blogDetail' => $this->showBlog($id),
+            'likesList' => $this->likesList(),
         ];
+    }
+
+    public function onlyBlogList()
+    {
+        return ['onlyBlogList' => $this->blogAll(false)];
     }
 
     /**
@@ -126,14 +165,20 @@ class BlogServices implements HomeInterface
                 ->with(['BlogDetail' => function ($query) {
                     $query->select('blog_id', 'content_md', 'id');
                 }])
-                ->with('tags')
-                ->with('categories')
+                ->with(['tags' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", self::TAG);
+                }])
+                ->with(['categories' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", self::CATEGORY);
+                }])
                 ->first();
+
             if (empty($result)) {
                 throw new \Exception("置顶文章为空");
             }
 
             $result = $result->toArray();
+
         } catch (\Exception $e) {
             $result = [];
             \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
@@ -143,19 +188,26 @@ class BlogServices implements HomeInterface
     }
 
 
-    protected function blogAll()
+    protected function blogAll(bool $isTopWhere = true)
     {
         try {
             $result = $this->blog->append('post_content_info')
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
-                ->where("is_top", $this->isNoTop)
+                ->when($isTopWhere, function ($query) {
+                    $query->where("is_top", $this->isNoTop);
+                })
                 ->with(['BlogDetail' => function ($query) {
                     $query->select('blog_id', 'content_md', 'id');
                 }])
-                ->with('tags')
-                ->with('categories')
-                ->limit(9)->get()->toArray();
+                ->with(['tags' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", self::TAG);
+                }])
+                ->with(['categories' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", self::CATEGORY);
+                }])
+                ->limit($this->getBlogNumber())
+                ->get()->toArray();
         } catch (\Exception $e) {
             $result = [];
             \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
@@ -180,7 +232,25 @@ class BlogServices implements HomeInterface
                 ->get(['title', 'id'])->toArray();
         } catch (\Exception $e) {
             $result = [
-                'id' => '',
+                'id' => 0,
+                'title' => '',
+            ];
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
+        }
+
+        return $result;
+    }
+
+    public function likesList()
+    {
+        try {
+            $result = $this->blog->where('post_status', $this->getPostStatus())
+                ->orderByDesc('likes_volume')
+                ->limit($this->getLikesNumber())
+                ->get(['title', 'id'])->toArray();
+        } catch (\Exception $e) {
+            $result = [
+                'id' => 0,
                 'title' => '',
             ];
             \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());

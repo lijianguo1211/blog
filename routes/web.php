@@ -12,7 +12,7 @@
 */
 
 Route::namespace('Home')->as('home.')->group(function ($group) {
-    $group->get('/', 'IndexController@index')->name('/');
+    $group->get('/', 'IndexController@index')->name('index');
     $group->get('blog', 'BlogController@index')->name('blog');
     $group->get('blog/{id}', 'BlogDetailController@index')->name('blog_details');
     $group->get('blog/add/{id}', 'AjaxController@addLikes')->name('addLikes');

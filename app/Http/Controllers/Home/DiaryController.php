@@ -9,10 +9,14 @@
 
 namespace App\Http\Controllers\Home;
 
+use App\Service\DiaryService;
+
 class DiaryController extends BaseController
 {
-    public function index()
+    public function index(DiaryService $diaryService)
     {
-        return view('home.diary.index')->with($this->shareData);
+        $result = $diaryService->getData();
+
+        return view('home.diary.index')->with(array_merge($this->shareData, $result));
     }
 }

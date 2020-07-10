@@ -10,18 +10,26 @@
             <div class="col-md-8 blog-main">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('home./') }}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('home.index') }}">Home</a></li>
                         <li class="breadcrumb-item"><a href="{{ route('home.blog') }}">Blog</a></li>
                         <li class="breadcrumb-item active" aria-current="page">分类</li>
                     </ol>
                 </nav>
                 @if(!empty($blogDetail))
                     <div class="blog-post">
-                        <h2 class="blog-post-title">{{ $blogDetail['title'] }}</h2>
-                        <p class="blog-post-meta">{{ $blogDetail['created_at'] }} <a href="#">Mark</a></p>
+                        <div>
+                            <h2 class="blog-post-title">{{ $blogDetail['title'] }}</h2>
+                            <p class="blog-post-meta">{{ $blogDetail['created_at'] }} <a href="#">Mark</a></p>
+{{--                            <svg class="bi bi-eye-fill float-right" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">--}}
+{{--                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>--}}
+{{--                                <path fill-rule="evenodd" d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>--}}
+{{--                            </svg>--}}
+                        </div>
+
                         <div class="language-php-jay">
                             {!! $blogDetail['blog_detail']['content_md'] !!}
                         </div>
+
                     </div>
                 @endif
 
@@ -29,8 +37,11 @@
                     <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-tag-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" d="M2 1a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l4.586-4.586a1 1 0 0 0 0-1.414l-7-7A1 1 0 0 0 6.586 1H2zm4 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
                     </svg>
-                    <a class="badge badge-dark" href="https://learnku.com/blog/echo_dump/tags/php_28">Dark</a>
-                    <a class="badge badge-dark" href="https://learnku.com/blog/echo_dump/tags/design-pattern_5q_49488">Dark</a>
+                    @if(!empty($blogDetail['tags']))
+                        @foreach($blogDetail['tags'] as $item)
+                            <a class="badge badge-dark" href="{{ $item['tag_slug'] }}">{{ $item['tag_name'] }}</a>
+                        @endforeach
+                    @endif
                 </div>
 
                 <div class="card box_margin_max_35">
@@ -74,7 +85,19 @@
                                 <input type="hidden" class="comment" value="{{ route('home.comment', ['id' => $blogDetail['id']]) }}">
                             @endif
                         </div>
-                        <a href="javascript:void(0);" type="button" class="btn btn-dark jay-float-right">评论</a>
+                        <a href="javascript:void(0);" type="button" class="btn btn-dark jay-float-right">
+                            <svg class="bi bi-pen" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"
+                                 xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                      d="M5.707 13.707a1 1 0 0 1-.39.242l-3 1a1 1 0 0 1-1.266-1.265l1-3a1 1 0 0 1 .242-.391L10.086 2.5a2 2 0 0 1 2.828 0l.586.586a2 2 0 0 1 0 2.828l-7.793 7.793zM3 11l7.793-7.793a1 1 0 0 1 1.414 0l.586.586a1 1 0 0 1 0 1.414L5 13l-3 1 1-3z"/>
+                                <path fill-rule="evenodd"
+                                      d="M9.854 2.56a.5.5 0 0 0-.708 0L5.854 5.855a.5.5 0 0 1-.708-.708L8.44 1.854a1.5 1.5 0 0 1 2.122 0l.293.292a.5.5 0 0 1-.707.708l-.293-.293z"/>
+                                <path
+                                    d="M13.293 1.207a1 1 0 0 1 1.414 0l.03.03a1 1 0 0 1 .03 1.383L13.5 4 12 2.5l1.293-1.293z"/>
+                            </svg>
+                            评论
+                        </a>
+
                     </div>
                 </div>
             </div>
@@ -83,7 +106,7 @@
                 <div class="p-4 mb-3 bg-light rounded">
                     @empty($homeSources)
                         <h4 class="font-italic">
-                            <a href="/" target="_blank">
+                            <a  class="text-dark" href="/" target="_blank">
                                 吃瓜
                             </a>
                         </h4>
@@ -106,7 +129,7 @@
                     <h4 class="font-italic">阅读推荐</h4>
                     <ol class="list-unstyled mb-0">
                         @foreach($rankingList as $item)
-                            <li><a href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
                         @endforeach
                     </ol>
                 </div>
@@ -114,18 +137,9 @@
                 <div class="p-4">
                     <h4 class="font-italic">点击排行榜</h4>
                     <ol class="list-unstyled mb-0">
-                        <li><a href="#">March 2014</a></li>
-                        <li><a href="#">February 2014</a></li>
-                        <li><a href="#">January 2014</a></li>
-                        <li><a href="#">December 2013</a></li>
-                        <li><a href="#">November 2013</a></li>
-                        <li><a href="#">October 2013</a></li>
-                        <li><a href="#">September 2013</a></li>
-                        <li><a href="#">August 2013</a></li>
-                        <li><a href="#">July 2013</a></li>
-                        <li><a href="#">June 2013</a></li>
-                        <li><a href="#">May 2013</a></li>
-                        <li><a href="#">April 2013</a></li>
+                        @foreach($likesList as $item)
+                            <li><a class="text-secondary" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                        @endforeach
                     </ol>
                 </div>
 
@@ -133,15 +147,14 @@
                     <h4 class="font-italic">友情链接</h4>
                     <ol class="list-unstyled">
                         @empty($linkService)
-                            <li><a target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
-                            <li><a target="_blank" href="https://github.com/">GitHub</a></li>
-                            <li><a target="_blank" href="https://laravel.com/">Laravel</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://github.com/">GitHub</a></li>
+                            <li><a class="text-secondary" target="_blank" href="https://laravel.com/">Laravel</a></li>
                         @else
                             @foreach($linkService as $item)
-                                <li><a target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
+                                <li><a class="text-secondary" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
                             @endforeach
                         @endempty
-
                     </ol>
                 </div>
             </aside><!-- /.blog-sidebar -->
