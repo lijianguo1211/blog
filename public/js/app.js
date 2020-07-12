@@ -110,7 +110,6 @@ module.exports = __webpack_require__(/*! ./lib/axios */ "./node_modules/axios/li
 var utils = __webpack_require__(/*! ./../utils */ "./node_modules/axios/lib/utils.js");
 var settle = __webpack_require__(/*! ./../core/settle */ "./node_modules/axios/lib/core/settle.js");
 var buildURL = __webpack_require__(/*! ./../helpers/buildURL */ "./node_modules/axios/lib/helpers/buildURL.js");
-var buildFullPath = __webpack_require__(/*! ../core/buildFullPath */ "./node_modules/axios/lib/core/buildFullPath.js");
 var parseHeaders = __webpack_require__(/*! ./../helpers/parseHeaders */ "./node_modules/axios/lib/helpers/parseHeaders.js");
 var isURLSameOrigin = __webpack_require__(/*! ./../helpers/isURLSameOrigin */ "./node_modules/axios/lib/helpers/isURLSameOrigin.js");
 var createError = __webpack_require__(/*! ../core/createError */ "./node_modules/axios/lib/core/createError.js");
@@ -133,8 +132,7 @@ module.exports = function xhrAdapter(config) {
       requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
     }
 
-    var fullPath = buildFullPath(config.baseURL, config.url);
-    request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
+    request.open(config.method.toUpperCase(), buildURL(config.url, config.params, config.paramsSerializer), true);
 
     // Set the request timeout in MS
     request.timeout = config.timeout;
@@ -171,18 +169,6 @@ module.exports = function xhrAdapter(config) {
       request = null;
     };
 
-    // Handle browser request cancellation (as opposed to a manual cancellation)
-    request.onabort = function handleAbort() {
-      if (!request) {
-        return;
-      }
-
-      reject(createError('Request aborted', config, 'ECONNABORTED', request));
-
-      // Clean up request
-      request = null;
-    };
-
     // Handle low level network errors
     request.onerror = function handleError() {
       // Real errors are hidden from us by the browser
@@ -195,11 +181,7 @@ module.exports = function xhrAdapter(config) {
 
     // Handle timeout
     request.ontimeout = function handleTimeout() {
-      var timeoutErrorMessage = 'timeout of ' + config.timeout + 'ms exceeded';
-      if (config.timeoutErrorMessage) {
-        timeoutErrorMessage = config.timeoutErrorMessage;
-      }
-      reject(createError(timeoutErrorMessage, config, 'ECONNABORTED',
+      reject(createError('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED',
         request));
 
       // Clean up request
@@ -213,9 +195,9 @@ module.exports = function xhrAdapter(config) {
       var cookies = __webpack_require__(/*! ./../helpers/cookies */ "./node_modules/axios/lib/helpers/cookies.js");
 
       // Add xsrf header
-      var xsrfValue = (config.withCredentials || isURLSameOrigin(fullPath)) && config.xsrfCookieName ?
-        cookies.read(config.xsrfCookieName) :
-        undefined;
+      var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
+          cookies.read(config.xsrfCookieName) :
+          undefined;
 
       if (xsrfValue) {
         requestHeaders[config.xsrfHeaderName] = xsrfValue;
@@ -236,8 +218,8 @@ module.exports = function xhrAdapter(config) {
     }
 
     // Add withCredentials to request if needed
-    if (!utils.isUndefined(config.withCredentials)) {
-      request.withCredentials = !!config.withCredentials;
+    if (config.withCredentials) {
+      request.withCredentials = true;
     }
 
     // Add responseType to request if needed
@@ -302,7 +284,6 @@ module.exports = function xhrAdapter(config) {
 var utils = __webpack_require__(/*! ./utils */ "./node_modules/axios/lib/utils.js");
 var bind = __webpack_require__(/*! ./helpers/bind */ "./node_modules/axios/lib/helpers/bind.js");
 var Axios = __webpack_require__(/*! ./core/Axios */ "./node_modules/axios/lib/core/Axios.js");
-var mergeConfig = __webpack_require__(/*! ./core/mergeConfig */ "./node_modules/axios/lib/core/mergeConfig.js");
 var defaults = __webpack_require__(/*! ./defaults */ "./node_modules/axios/lib/defaults.js");
 
 /**
@@ -332,7 +313,7 @@ axios.Axios = Axios;
 
 // Factory for creating new instances
 axios.create = function create(instanceConfig) {
-  return createInstance(mergeConfig(axios.defaults, instanceConfig));
+  return createInstance(utils.merge(defaults, instanceConfig));
 };
 
 // Expose Cancel & CancelToken
@@ -481,11 +462,10 @@ module.exports = function isCancel(value) {
 "use strict";
 
 
+var defaults = __webpack_require__(/*! ./../defaults */ "./node_modules/axios/lib/defaults.js");
 var utils = __webpack_require__(/*! ./../utils */ "./node_modules/axios/lib/utils.js");
-var buildURL = __webpack_require__(/*! ../helpers/buildURL */ "./node_modules/axios/lib/helpers/buildURL.js");
 var InterceptorManager = __webpack_require__(/*! ./InterceptorManager */ "./node_modules/axios/lib/core/InterceptorManager.js");
 var dispatchRequest = __webpack_require__(/*! ./dispatchRequest */ "./node_modules/axios/lib/core/dispatchRequest.js");
-var mergeConfig = __webpack_require__(/*! ./mergeConfig */ "./node_modules/axios/lib/core/mergeConfig.js");
 
 /**
  * Create a new instance of Axios
@@ -509,22 +489,13 @@ Axios.prototype.request = function request(config) {
   /*eslint no-param-reassign:0*/
   // Allow for axios('example/url'[, config]) a la fetch API
   if (typeof config === 'string') {
-    config = arguments[1] || {};
-    config.url = arguments[0];
-  } else {
-    config = config || {};
+    config = utils.merge({
+      url: arguments[0]
+    }, arguments[1]);
   }
 
-  config = mergeConfig(this.defaults, config);
-
-  // Set config.method
-  if (config.method) {
-    config.method = config.method.toLowerCase();
-  } else if (this.defaults.method) {
-    config.method = this.defaults.method.toLowerCase();
-  } else {
-    config.method = 'get';
-  }
+  config = utils.merge(defaults, {method: 'get'}, this.defaults, config);
+  config.method = config.method.toLowerCase();
 
   // Hook up interceptors middleware
   var chain = [dispatchRequest, undefined];
@@ -543,11 +514,6 @@ Axios.prototype.request = function request(config) {
   }
 
   return promise;
-};
-
-Axios.prototype.getUri = function getUri(config) {
-  config = mergeConfig(this.defaults, config);
-  return buildURL(config.url, config.params, config.paramsSerializer).replace(/^\?/, '');
 };
 
 // Provide aliases for supported request methods
@@ -641,38 +607,6 @@ module.exports = InterceptorManager;
 
 /***/ }),
 
-/***/ "./node_modules/axios/lib/core/buildFullPath.js":
-/*!******************************************************!*\
-  !*** ./node_modules/axios/lib/core/buildFullPath.js ***!
-  \******************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var isAbsoluteURL = __webpack_require__(/*! ../helpers/isAbsoluteURL */ "./node_modules/axios/lib/helpers/isAbsoluteURL.js");
-var combineURLs = __webpack_require__(/*! ../helpers/combineURLs */ "./node_modules/axios/lib/helpers/combineURLs.js");
-
-/**
- * Creates a new URL by combining the baseURL with the requestedURL,
- * only when the requestedURL is not already an absolute URL.
- * If the requestURL is absolute, this function returns the requestedURL untouched.
- *
- * @param {string} baseURL The base URL
- * @param {string} requestedURL Absolute or relative URL to combine
- * @returns {string} The combined full path
- */
-module.exports = function buildFullPath(baseURL, requestedURL) {
-  if (baseURL && !isAbsoluteURL(requestedURL)) {
-    return combineURLs(baseURL, requestedURL);
-  }
-  return requestedURL;
-};
-
-
-/***/ }),
-
 /***/ "./node_modules/axios/lib/core/createError.js":
 /*!****************************************************!*\
   !*** ./node_modules/axios/lib/core/createError.js ***!
@@ -717,6 +651,8 @@ var utils = __webpack_require__(/*! ./../utils */ "./node_modules/axios/lib/util
 var transformData = __webpack_require__(/*! ./transformData */ "./node_modules/axios/lib/core/transformData.js");
 var isCancel = __webpack_require__(/*! ../cancel/isCancel */ "./node_modules/axios/lib/cancel/isCancel.js");
 var defaults = __webpack_require__(/*! ../defaults */ "./node_modules/axios/lib/defaults.js");
+var isAbsoluteURL = __webpack_require__(/*! ./../helpers/isAbsoluteURL */ "./node_modules/axios/lib/helpers/isAbsoluteURL.js");
+var combineURLs = __webpack_require__(/*! ./../helpers/combineURLs */ "./node_modules/axios/lib/helpers/combineURLs.js");
 
 /**
  * Throws a `Cancel` if cancellation has been requested.
@@ -736,6 +672,11 @@ function throwIfCancellationRequested(config) {
 module.exports = function dispatchRequest(config) {
   throwIfCancellationRequested(config);
 
+  // Support baseURL config
+  if (config.baseURL && !isAbsoluteURL(config.url)) {
+    config.url = combineURLs(config.baseURL, config.url);
+  }
+
   // Ensure headers exist
   config.headers = config.headers || {};
 
@@ -750,7 +691,7 @@ module.exports = function dispatchRequest(config) {
   config.headers = utils.merge(
     config.headers.common || {},
     config.headers[config.method] || {},
-    config.headers
+    config.headers || {}
   );
 
   utils.forEach(
@@ -819,115 +760,9 @@ module.exports = function enhanceError(error, config, code, request, response) {
   if (code) {
     error.code = code;
   }
-
   error.request = request;
   error.response = response;
-  error.isAxiosError = true;
-
-  error.toJSON = function() {
-    return {
-      // Standard
-      message: this.message,
-      name: this.name,
-      // Microsoft
-      description: this.description,
-      number: this.number,
-      // Mozilla
-      fileName: this.fileName,
-      lineNumber: this.lineNumber,
-      columnNumber: this.columnNumber,
-      stack: this.stack,
-      // Axios
-      config: this.config,
-      code: this.code
-    };
-  };
   return error;
-};
-
-
-/***/ }),
-
-/***/ "./node_modules/axios/lib/core/mergeConfig.js":
-/*!****************************************************!*\
-  !*** ./node_modules/axios/lib/core/mergeConfig.js ***!
-  \****************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var utils = __webpack_require__(/*! ../utils */ "./node_modules/axios/lib/utils.js");
-
-/**
- * Config-specific merge-function which creates a new config-object
- * by merging two configuration objects together.
- *
- * @param {Object} config1
- * @param {Object} config2
- * @returns {Object} New object resulting from merging config2 to config1
- */
-module.exports = function mergeConfig(config1, config2) {
-  // eslint-disable-next-line no-param-reassign
-  config2 = config2 || {};
-  var config = {};
-
-  var valueFromConfig2Keys = ['url', 'method', 'params', 'data'];
-  var mergeDeepPropertiesKeys = ['headers', 'auth', 'proxy'];
-  var defaultToConfig2Keys = [
-    'baseURL', 'url', 'transformRequest', 'transformResponse', 'paramsSerializer',
-    'timeout', 'withCredentials', 'adapter', 'responseType', 'xsrfCookieName',
-    'xsrfHeaderName', 'onUploadProgress', 'onDownloadProgress',
-    'maxContentLength', 'validateStatus', 'maxRedirects', 'httpAgent',
-    'httpsAgent', 'cancelToken', 'socketPath'
-  ];
-
-  utils.forEach(valueFromConfig2Keys, function valueFromConfig2(prop) {
-    if (typeof config2[prop] !== 'undefined') {
-      config[prop] = config2[prop];
-    }
-  });
-
-  utils.forEach(mergeDeepPropertiesKeys, function mergeDeepProperties(prop) {
-    if (utils.isObject(config2[prop])) {
-      config[prop] = utils.deepMerge(config1[prop], config2[prop]);
-    } else if (typeof config2[prop] !== 'undefined') {
-      config[prop] = config2[prop];
-    } else if (utils.isObject(config1[prop])) {
-      config[prop] = utils.deepMerge(config1[prop]);
-    } else if (typeof config1[prop] !== 'undefined') {
-      config[prop] = config1[prop];
-    }
-  });
-
-  utils.forEach(defaultToConfig2Keys, function defaultToConfig2(prop) {
-    if (typeof config2[prop] !== 'undefined') {
-      config[prop] = config2[prop];
-    } else if (typeof config1[prop] !== 'undefined') {
-      config[prop] = config1[prop];
-    }
-  });
-
-  var axiosKeys = valueFromConfig2Keys
-    .concat(mergeDeepPropertiesKeys)
-    .concat(defaultToConfig2Keys);
-
-  var otherKeys = Object
-    .keys(config2)
-    .filter(function filterAxiosKeys(key) {
-      return axiosKeys.indexOf(key) === -1;
-    });
-
-  utils.forEach(otherKeys, function otherKeysDefaultToConfig2(prop) {
-    if (typeof config2[prop] !== 'undefined') {
-      config[prop] = config2[prop];
-    } else if (typeof config1[prop] !== 'undefined') {
-      config[prop] = config1[prop];
-    }
-  });
-
-  return config;
 };
 
 
@@ -954,7 +789,8 @@ var createError = __webpack_require__(/*! ./createError */ "./node_modules/axios
  */
 module.exports = function settle(resolve, reject, response) {
   var validateStatus = response.config.validateStatus;
-  if (!validateStatus || validateStatus(response.status)) {
+  // Note: status is not exposed by XDomainRequest
+  if (!response.status || !validateStatus || validateStatus(response.status)) {
     resolve(response);
   } else {
     reject(createError(
@@ -1030,7 +866,7 @@ function getDefaultAdapter() {
   if (typeof XMLHttpRequest !== 'undefined') {
     // For browsers use XHR adapter
     adapter = __webpack_require__(/*! ./adapters/xhr */ "./node_modules/axios/lib/adapters/xhr.js");
-  } else if (typeof process !== 'undefined' && Object.prototype.toString.call(process) === '[object process]') {
+  } else if (typeof process !== 'undefined') {
     // For node use HTTP adapter
     adapter = __webpack_require__(/*! ./adapters/http */ "./node_modules/axios/lib/adapters/xhr.js");
   }
@@ -1041,7 +877,6 @@ var defaults = {
   adapter: getDefaultAdapter(),
 
   transformRequest: [function transformRequest(data, headers) {
-    normalizeHeaderName(headers, 'Accept');
     normalizeHeaderName(headers, 'Content-Type');
     if (utils.isFormData(data) ||
       utils.isArrayBuffer(data) ||
@@ -1204,11 +1039,6 @@ module.exports = function buildURL(url, params, paramsSerializer) {
   }
 
   if (serializedParams) {
-    var hashmarkIndex = url.indexOf('#');
-    if (hashmarkIndex !== -1) {
-      url = url.slice(0, hashmarkIndex);
-    }
-
     url += (url.indexOf('?') === -1 ? '?' : '&') + serializedParams;
   }
 
@@ -1260,50 +1090,50 @@ module.exports = (
   utils.isStandardBrowserEnv() ?
 
   // Standard browser envs support document.cookie
-    (function standardBrowserEnv() {
-      return {
-        write: function write(name, value, expires, path, domain, secure) {
-          var cookie = [];
-          cookie.push(name + '=' + encodeURIComponent(value));
+  (function standardBrowserEnv() {
+    return {
+      write: function write(name, value, expires, path, domain, secure) {
+        var cookie = [];
+        cookie.push(name + '=' + encodeURIComponent(value));
 
-          if (utils.isNumber(expires)) {
-            cookie.push('expires=' + new Date(expires).toGMTString());
-          }
-
-          if (utils.isString(path)) {
-            cookie.push('path=' + path);
-          }
-
-          if (utils.isString(domain)) {
-            cookie.push('domain=' + domain);
-          }
-
-          if (secure === true) {
-            cookie.push('secure');
-          }
-
-          document.cookie = cookie.join('; ');
-        },
-
-        read: function read(name) {
-          var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
-          return (match ? decodeURIComponent(match[3]) : null);
-        },
-
-        remove: function remove(name) {
-          this.write(name, '', Date.now() - 86400000);
+        if (utils.isNumber(expires)) {
+          cookie.push('expires=' + new Date(expires).toGMTString());
         }
-      };
-    })() :
+
+        if (utils.isString(path)) {
+          cookie.push('path=' + path);
+        }
+
+        if (utils.isString(domain)) {
+          cookie.push('domain=' + domain);
+        }
+
+        if (secure === true) {
+          cookie.push('secure');
+        }
+
+        document.cookie = cookie.join('; ');
+      },
+
+      read: function read(name) {
+        var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+        return (match ? decodeURIComponent(match[3]) : null);
+      },
+
+      remove: function remove(name) {
+        this.write(name, '', Date.now() - 86400000);
+      }
+    };
+  })() :
 
   // Non standard browser env (web workers, react-native) lack needed support.
-    (function nonStandardBrowserEnv() {
-      return {
-        write: function write() {},
-        read: function read() { return null; },
-        remove: function remove() {}
-      };
-    })()
+  (function nonStandardBrowserEnv() {
+    return {
+      write: function write() {},
+      read: function read() { return null; },
+      remove: function remove() {}
+    };
+  })()
 );
 
 
@@ -1352,64 +1182,64 @@ module.exports = (
 
   // Standard browser envs have full support of the APIs needed to test
   // whether the request URL is of the same origin as current location.
-    (function standardBrowserEnv() {
-      var msie = /(msie|trident)/i.test(navigator.userAgent);
-      var urlParsingNode = document.createElement('a');
-      var originURL;
+  (function standardBrowserEnv() {
+    var msie = /(msie|trident)/i.test(navigator.userAgent);
+    var urlParsingNode = document.createElement('a');
+    var originURL;
 
-      /**
+    /**
     * Parse a URL to discover it's components
     *
     * @param {String} url The URL to be parsed
     * @returns {Object}
     */
-      function resolveURL(url) {
-        var href = url;
+    function resolveURL(url) {
+      var href = url;
 
-        if (msie) {
+      if (msie) {
         // IE needs attribute set twice to normalize properties
-          urlParsingNode.setAttribute('href', href);
-          href = urlParsingNode.href;
-        }
-
         urlParsingNode.setAttribute('href', href);
-
-        // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
-        return {
-          href: urlParsingNode.href,
-          protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
-          host: urlParsingNode.host,
-          search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
-          hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
-          hostname: urlParsingNode.hostname,
-          port: urlParsingNode.port,
-          pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
-            urlParsingNode.pathname :
-            '/' + urlParsingNode.pathname
-        };
+        href = urlParsingNode.href;
       }
 
-      originURL = resolveURL(window.location.href);
+      urlParsingNode.setAttribute('href', href);
 
-      /**
+      // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
+      return {
+        href: urlParsingNode.href,
+        protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
+        host: urlParsingNode.host,
+        search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
+        hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
+        hostname: urlParsingNode.hostname,
+        port: urlParsingNode.port,
+        pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
+                  urlParsingNode.pathname :
+                  '/' + urlParsingNode.pathname
+      };
+    }
+
+    originURL = resolveURL(window.location.href);
+
+    /**
     * Determine if a URL shares the same origin as the current location
     *
     * @param {String} requestURL The URL to test
     * @returns {boolean} True if URL shares the same origin, otherwise false
     */
-      return function isURLSameOrigin(requestURL) {
-        var parsed = (utils.isString(requestURL)) ? resolveURL(requestURL) : requestURL;
-        return (parsed.protocol === originURL.protocol &&
+    return function isURLSameOrigin(requestURL) {
+      var parsed = (utils.isString(requestURL)) ? resolveURL(requestURL) : requestURL;
+      return (parsed.protocol === originURL.protocol &&
             parsed.host === originURL.host);
-      };
-    })() :
+    };
+  })() :
 
   // Non standard browser envs (web workers, react-native) lack needed support.
-    (function nonStandardBrowserEnv() {
-      return function isURLSameOrigin() {
-        return true;
-      };
-    })()
+  (function nonStandardBrowserEnv() {
+    return function isURLSameOrigin() {
+      return true;
+    };
+  })()
 );
 
 
@@ -1554,6 +1384,7 @@ module.exports = function spread(callback) {
 
 
 var bind = __webpack_require__(/*! ./helpers/bind */ "./node_modules/axios/lib/helpers/bind.js");
+var isBuffer = __webpack_require__(/*! is-buffer */ "./node_modules/is-buffer/index.js");
 
 /*global toString:true*/
 
@@ -1569,27 +1400,6 @@ var toString = Object.prototype.toString;
  */
 function isArray(val) {
   return toString.call(val) === '[object Array]';
-}
-
-/**
- * Determine if a value is undefined
- *
- * @param {Object} val The value to test
- * @returns {boolean} True if the value is undefined, otherwise false
- */
-function isUndefined(val) {
-  return typeof val === 'undefined';
-}
-
-/**
- * Determine if a value is a Buffer
- *
- * @param {Object} val The value to test
- * @returns {boolean} True if value is a Buffer, otherwise false
- */
-function isBuffer(val) {
-  return val !== null && !isUndefined(val) && val.constructor !== null && !isUndefined(val.constructor)
-    && typeof val.constructor.isBuffer === 'function' && val.constructor.isBuffer(val);
 }
 
 /**
@@ -1646,6 +1456,16 @@ function isString(val) {
  */
 function isNumber(val) {
   return typeof val === 'number';
+}
+
+/**
+ * Determine if a value is undefined
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if the value is undefined, otherwise false
+ */
+function isUndefined(val) {
+  return typeof val === 'undefined';
 }
 
 /**
@@ -1740,13 +1560,9 @@ function trim(str) {
  *
  * react-native:
  *  navigator.product -> 'ReactNative'
- * nativescript
- *  navigator.product -> 'NativeScript' or 'NS'
  */
 function isStandardBrowserEnv() {
-  if (typeof navigator !== 'undefined' && (navigator.product === 'ReactNative' ||
-                                           navigator.product === 'NativeScript' ||
-                                           navigator.product === 'NS')) {
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
     return false;
   }
   return (
@@ -1828,32 +1644,6 @@ function merge(/* obj1, obj2, obj3, ... */) {
 }
 
 /**
- * Function equal to merge with the difference being that no reference
- * to original objects is kept.
- *
- * @see merge
- * @param {Object} obj1 Object to merge
- * @returns {Object} Result of all merge properties
- */
-function deepMerge(/* obj1, obj2, obj3, ... */) {
-  var result = {};
-  function assignValue(val, key) {
-    if (typeof result[key] === 'object' && typeof val === 'object') {
-      result[key] = deepMerge(result[key], val);
-    } else if (typeof val === 'object') {
-      result[key] = deepMerge({}, val);
-    } else {
-      result[key] = val;
-    }
-  }
-
-  for (var i = 0, l = arguments.length; i < l; i++) {
-    forEach(arguments[i], assignValue);
-  }
-  return result;
-}
-
-/**
  * Extends object a by mutably adding to it the properties of object b.
  *
  * @param {Object} a The object to be extended
@@ -1891,7 +1681,6 @@ module.exports = {
   isStandardBrowserEnv: isStandardBrowserEnv,
   forEach: forEach,
   merge: merge,
-  deepMerge: deepMerge,
   extend: extend,
   trim: trim
 };
@@ -6553,7 +6342,7 @@ module.exports = CodeMirrorSpellChecker;
     var elt = cm.state.placeholder = document.createElement("pre");
     elt.style.cssText = "height: 0; overflow: visible";
     elt.style.direction = cm.getOption("direction");
-    elt.className = "CodeMirror-placeholder CodeMirror-line-like";
+    elt.className = "CodeMirror-placeholder";
     var placeHolder = cm.getOption("placeholder")
     if (typeof placeHolder == "string") placeHolder = document.createTextNode(placeHolder)
     elt.appendChild(placeHolder)
@@ -6608,7 +6397,7 @@ module.exports = CodeMirrorSpellChecker;
 
       // If we're not in Markdown mode, fall back to normal newlineAndIndent
       var eolState = cm.getStateAfter(pos.line);
-      var inner = CodeMirror.innerMode(cm.getMode(), eolState);
+      var inner = cm.getMode().innerMode(eolState);
       if (inner.mode.name !== "markdown") {
         cm.execCommand("newlineAndIndent");
         return;
@@ -6626,9 +6415,7 @@ module.exports = CodeMirrorSpellChecker;
         return;
       }
       if (emptyListRE.test(line)) {
-        var endOfQuote = inQuote && />\s*$/.test(line)
-        var endOfList = !/>\s*$/.test(line)
-        if (endOfQuote || endOfList) cm.replaceRange("", {
+        if (!/>\s*$/.test(line)) cm.replaceRange("", {
           line: pos.line, ch: 0
         }, {
           line: pos.line, ch: pos.ch + 1
@@ -7094,28 +6881,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }
   }
 
-  var Delayed = function() {
-    this.id = null;
-    this.f = null;
-    this.time = 0;
-    this.handler = bind(this.onTimeout, this);
-  };
-  Delayed.prototype.onTimeout = function (self) {
-    self.id = 0;
-    if (self.time <= +new Date) {
-      self.f();
-    } else {
-      setTimeout(self.handler, self.time - +new Date);
-    }
-  };
+  var Delayed = function() {this.id = null;};
   Delayed.prototype.set = function (ms, f) {
-    this.f = f;
-    var time = +new Date + ms;
-    if (!this.id || time < this.time) {
-      clearTimeout(this.id);
-      this.id = setTimeout(this.handler, ms);
-      this.time = time;
-    }
+    clearTimeout(this.id);
+    this.id = setTimeout(f, ms);
   };
 
   function indexOf(array, elt) {
@@ -7125,7 +6894,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   }
 
   // Number of pixels added to scroller and sizer to hide scrollbar
-  var scrollerGap = 50;
+  var scrollerGap = 30;
 
   // Returned or thrown by various protocols to signal 'I'm not
   // handling this'.
@@ -7231,582 +7000,108 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }
   }
 
-  // BIDI HELPERS
+  // The display handles the DOM integration, both for input reading
+  // and content drawing. It holds references to DOM nodes and
+  // display-related state.
 
-  function iterateBidiSections(order, from, to, f) {
-    if (!order) { return f(from, to, "ltr", 0) }
-    var found = false;
-    for (var i = 0; i < order.length; ++i) {
-      var part = order[i];
-      if (part.from < to && part.to > from || from == to && part.to == from) {
-        f(Math.max(part.from, from), Math.min(part.to, to), part.level == 1 ? "rtl" : "ltr", i);
-        found = true;
-      }
-    }
-    if (!found) { f(from, to, "ltr"); }
-  }
+  function Display(place, doc, input) {
+    var d = this;
+    this.input = input;
 
-  var bidiOther = null;
-  function getBidiPartAt(order, ch, sticky) {
-    var found;
-    bidiOther = null;
-    for (var i = 0; i < order.length; ++i) {
-      var cur = order[i];
-      if (cur.from < ch && cur.to > ch) { return i }
-      if (cur.to == ch) {
-        if (cur.from != cur.to && sticky == "before") { found = i; }
-        else { bidiOther = i; }
-      }
-      if (cur.from == ch) {
-        if (cur.from != cur.to && sticky != "before") { found = i; }
-        else { bidiOther = i; }
-      }
-    }
-    return found != null ? found : bidiOther
-  }
+    // Covers bottom-right square when both scrollbars are present.
+    d.scrollbarFiller = elt("div", null, "CodeMirror-scrollbar-filler");
+    d.scrollbarFiller.setAttribute("cm-not-content", "true");
+    // Covers bottom of gutter when coverGutterNextToScrollbar is on
+    // and h scrollbar is present.
+    d.gutterFiller = elt("div", null, "CodeMirror-gutter-filler");
+    d.gutterFiller.setAttribute("cm-not-content", "true");
+    // Will contain the actual code, positioned to cover the viewport.
+    d.lineDiv = eltP("div", null, "CodeMirror-code");
+    // Elements are added to these to represent selection and cursors.
+    d.selectionDiv = elt("div", null, null, "position: relative; z-index: 1");
+    d.cursorDiv = elt("div", null, "CodeMirror-cursors");
+    // A visibility: hidden element used to find the size of things.
+    d.measure = elt("div", null, "CodeMirror-measure");
+    // When lines outside of the viewport are measured, they are drawn in this.
+    d.lineMeasure = elt("div", null, "CodeMirror-measure");
+    // Wraps everything that needs to exist inside the vertically-padded coordinate system
+    d.lineSpace = eltP("div", [d.measure, d.lineMeasure, d.selectionDiv, d.cursorDiv, d.lineDiv],
+                      null, "position: relative; outline: none");
+    var lines = eltP("div", [d.lineSpace], "CodeMirror-lines");
+    // Moved around its parent to cover visible view.
+    d.mover = elt("div", [lines], null, "position: relative");
+    // Set to the height of the document, allowing scrolling.
+    d.sizer = elt("div", [d.mover], "CodeMirror-sizer");
+    d.sizerWidth = null;
+    // Behavior of elts with overflow: auto and padding is
+    // inconsistent across browsers. This is used to ensure the
+    // scrollable area is big enough.
+    d.heightForcer = elt("div", null, null, "position: absolute; height: " + scrollerGap + "px; width: 1px;");
+    // Will contain the gutters, if any.
+    d.gutters = elt("div", null, "CodeMirror-gutters");
+    d.lineGutter = null;
+    // Actual scrollable element.
+    d.scroller = elt("div", [d.sizer, d.heightForcer, d.gutters], "CodeMirror-scroll");
+    d.scroller.setAttribute("tabIndex", "-1");
+    // The element in which the editor lives.
+    d.wrapper = elt("div", [d.scrollbarFiller, d.gutterFiller, d.scroller], "CodeMirror");
 
-  // Bidirectional ordering algorithm
-  // See http://unicode.org/reports/tr9/tr9-13.html for the algorithm
-  // that this (partially) implements.
+    // Work around IE7 z-index bug (not perfect, hence IE7 not really being supported)
+    if (ie && ie_version < 8) { d.gutters.style.zIndex = -1; d.scroller.style.paddingRight = 0; }
+    if (!webkit && !(gecko && mobile)) { d.scroller.draggable = true; }
 
-  // One-char codes used for character types:
-  // L (L):   Left-to-Right
-  // R (R):   Right-to-Left
-  // r (AL):  Right-to-Left Arabic
-  // 1 (EN):  European Number
-  // + (ES):  European Number Separator
-  // % (ET):  European Number Terminator
-  // n (AN):  Arabic Number
-  // , (CS):  Common Number Separator
-  // m (NSM): Non-Spacing Mark
-  // b (BN):  Boundary Neutral
-  // s (B):   Paragraph Separator
-  // t (S):   Segment Separator
-  // w (WS):  Whitespace
-  // N (ON):  Other Neutrals
-
-  // Returns null if characters are ordered as they appear
-  // (left-to-right), or an array of sections ({from, to, level}
-  // objects) in the order in which they occur visually.
-  var bidiOrdering = (function() {
-    // Character types for codepoints 0 to 0xff
-    var lowTypes = "bbbbbbbbbtstwsbbbbbbbbbbbbbbssstwNN%%%NNNNNN,N,N1111111111NNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNbbbbbbsbbbbbbbbbbbbbbbbbbbbbbbbbb,N%%%%NNNNLNNNNN%%11NLNNN1LNNNNNLLLLLLLLLLLLLLLLLLLLLLLNLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLN";
-    // Character types for codepoints 0x600 to 0x6f9
-    var arabicTypes = "nnnnnnNNr%%r,rNNmmmmmmmmmmmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmmmmmmmmmmmmmmmnnnnnnnnnn%nnrrrmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmnNmmmmmmrrmmNmmmmrr1111111111";
-    function charType(code) {
-      if (code <= 0xf7) { return lowTypes.charAt(code) }
-      else if (0x590 <= code && code <= 0x5f4) { return "R" }
-      else if (0x600 <= code && code <= 0x6f9) { return arabicTypes.charAt(code - 0x600) }
-      else if (0x6ee <= code && code <= 0x8ac) { return "r" }
-      else if (0x2000 <= code && code <= 0x200b) { return "w" }
-      else if (code == 0x200c) { return "b" }
-      else { return "L" }
+    if (place) {
+      if (place.appendChild) { place.appendChild(d.wrapper); }
+      else { place(d.wrapper); }
     }
 
-    var bidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac]/;
-    var isNeutral = /[stwN]/, isStrong = /[LRr]/, countsAsLeft = /[Lb1n]/, countsAsNum = /[1n]/;
+    // Current rendered range (may be bigger than the view window).
+    d.viewFrom = d.viewTo = doc.first;
+    d.reportedViewFrom = d.reportedViewTo = doc.first;
+    // Information about the rendered lines.
+    d.view = [];
+    d.renderedView = null;
+    // Holds info about a single rendered line when it was rendered
+    // for measurement, while not in view.
+    d.externalMeasured = null;
+    // Empty space (in pixels) above the view
+    d.viewOffset = 0;
+    d.lastWrapHeight = d.lastWrapWidth = 0;
+    d.updateLineNumbers = null;
 
-    function BidiSpan(level, from, to) {
-      this.level = level;
-      this.from = from; this.to = to;
-    }
+    d.nativeBarWidth = d.barHeight = d.barWidth = 0;
+    d.scrollbarsClipped = false;
 
-    return function(str, direction) {
-      var outerType = direction == "ltr" ? "L" : "R";
+    // Used to only resize the line number gutter when necessary (when
+    // the amount of lines crosses a boundary that makes its width change)
+    d.lineNumWidth = d.lineNumInnerWidth = d.lineNumChars = null;
+    // Set to true when a non-horizontal-scrolling line widget is
+    // added. As an optimization, line widget aligning is skipped when
+    // this is false.
+    d.alignWidgets = false;
 
-      if (str.length == 0 || direction == "ltr" && !bidiRE.test(str)) { return false }
-      var len = str.length, types = [];
-      for (var i = 0; i < len; ++i)
-        { types.push(charType(str.charCodeAt(i))); }
+    d.cachedCharWidth = d.cachedTextHeight = d.cachedPaddingH = null;
 
-      // W1. Examine each non-spacing mark (NSM) in the level run, and
-      // change the type of the NSM to the type of the previous
-      // character. If the NSM is at the start of the level run, it will
-      // get the type of sor.
-      for (var i$1 = 0, prev = outerType; i$1 < len; ++i$1) {
-        var type = types[i$1];
-        if (type == "m") { types[i$1] = prev; }
-        else { prev = type; }
-      }
+    // Tracks the maximum line length so that the horizontal scrollbar
+    // can be kept static when scrolling.
+    d.maxLine = null;
+    d.maxLineLength = 0;
+    d.maxLineChanged = false;
 
-      // W2. Search backwards from each instance of a European number
-      // until the first strong type (R, L, AL, or sor) is found. If an
-      // AL is found, change the type of the European number to Arabic
-      // number.
-      // W3. Change all ALs to R.
-      for (var i$2 = 0, cur = outerType; i$2 < len; ++i$2) {
-        var type$1 = types[i$2];
-        if (type$1 == "1" && cur == "r") { types[i$2] = "n"; }
-        else if (isStrong.test(type$1)) { cur = type$1; if (type$1 == "r") { types[i$2] = "R"; } }
-      }
+    // Used for measuring wheel scrolling granularity
+    d.wheelDX = d.wheelDY = d.wheelStartX = d.wheelStartY = null;
 
-      // W4. A single European separator between two European numbers
-      // changes to a European number. A single common separator between
-      // two numbers of the same type changes to that type.
-      for (var i$3 = 1, prev$1 = types[0]; i$3 < len - 1; ++i$3) {
-        var type$2 = types[i$3];
-        if (type$2 == "+" && prev$1 == "1" && types[i$3+1] == "1") { types[i$3] = "1"; }
-        else if (type$2 == "," && prev$1 == types[i$3+1] &&
-                 (prev$1 == "1" || prev$1 == "n")) { types[i$3] = prev$1; }
-        prev$1 = type$2;
-      }
+    // True when shift is held down.
+    d.shift = false;
 
-      // W5. A sequence of European terminators adjacent to European
-      // numbers changes to all European numbers.
-      // W6. Otherwise, separators and terminators change to Other
-      // Neutral.
-      for (var i$4 = 0; i$4 < len; ++i$4) {
-        var type$3 = types[i$4];
-        if (type$3 == ",") { types[i$4] = "N"; }
-        else if (type$3 == "%") {
-          var end = (void 0);
-          for (end = i$4 + 1; end < len && types[end] == "%"; ++end) {}
-          var replace = (i$4 && types[i$4-1] == "!") || (end < len && types[end] == "1") ? "1" : "N";
-          for (var j = i$4; j < end; ++j) { types[j] = replace; }
-          i$4 = end - 1;
-        }
-      }
+    // Used to track whether anything happened since the context menu
+    // was opened.
+    d.selForContextMenu = null;
 
-      // W7. Search backwards from each instance of a European number
-      // until the first strong type (R, L, or sor) is found. If an L is
-      // found, then change the type of the European number to L.
-      for (var i$5 = 0, cur$1 = outerType; i$5 < len; ++i$5) {
-        var type$4 = types[i$5];
-        if (cur$1 == "L" && type$4 == "1") { types[i$5] = "L"; }
-        else if (isStrong.test(type$4)) { cur$1 = type$4; }
-      }
+    d.activeTouch = null;
 
-      // N1. A sequence of neutrals takes the direction of the
-      // surrounding strong text if the text on both sides has the same
-      // direction. European and Arabic numbers act as if they were R in
-      // terms of their influence on neutrals. Start-of-level-run (sor)
-      // and end-of-level-run (eor) are used at level run boundaries.
-      // N2. Any remaining neutrals take the embedding direction.
-      for (var i$6 = 0; i$6 < len; ++i$6) {
-        if (isNeutral.test(types[i$6])) {
-          var end$1 = (void 0);
-          for (end$1 = i$6 + 1; end$1 < len && isNeutral.test(types[end$1]); ++end$1) {}
-          var before = (i$6 ? types[i$6-1] : outerType) == "L";
-          var after = (end$1 < len ? types[end$1] : outerType) == "L";
-          var replace$1 = before == after ? (before ? "L" : "R") : outerType;
-          for (var j$1 = i$6; j$1 < end$1; ++j$1) { types[j$1] = replace$1; }
-          i$6 = end$1 - 1;
-        }
-      }
-
-      // Here we depart from the documented algorithm, in order to avoid
-      // building up an actual levels array. Since there are only three
-      // levels (0, 1, 2) in an implementation that doesn't take
-      // explicit embedding into account, we can build up the order on
-      // the fly, without following the level-based algorithm.
-      var order = [], m;
-      for (var i$7 = 0; i$7 < len;) {
-        if (countsAsLeft.test(types[i$7])) {
-          var start = i$7;
-          for (++i$7; i$7 < len && countsAsLeft.test(types[i$7]); ++i$7) {}
-          order.push(new BidiSpan(0, start, i$7));
-        } else {
-          var pos = i$7, at = order.length, isRTL = direction == "rtl" ? 1 : 0;
-          for (++i$7; i$7 < len && types[i$7] != "L"; ++i$7) {}
-          for (var j$2 = pos; j$2 < i$7;) {
-            if (countsAsNum.test(types[j$2])) {
-              if (pos < j$2) { order.splice(at, 0, new BidiSpan(1, pos, j$2)); at += isRTL; }
-              var nstart = j$2;
-              for (++j$2; j$2 < i$7 && countsAsNum.test(types[j$2]); ++j$2) {}
-              order.splice(at, 0, new BidiSpan(2, nstart, j$2));
-              at += isRTL;
-              pos = j$2;
-            } else { ++j$2; }
-          }
-          if (pos < i$7) { order.splice(at, 0, new BidiSpan(1, pos, i$7)); }
-        }
-      }
-      if (direction == "ltr") {
-        if (order[0].level == 1 && (m = str.match(/^\s+/))) {
-          order[0].from = m[0].length;
-          order.unshift(new BidiSpan(0, 0, m[0].length));
-        }
-        if (lst(order).level == 1 && (m = str.match(/\s+$/))) {
-          lst(order).to -= m[0].length;
-          order.push(new BidiSpan(0, len - m[0].length, len));
-        }
-      }
-
-      return direction == "rtl" ? order.reverse() : order
-    }
-  })();
-
-  // Get the bidi ordering for the given line (and cache it). Returns
-  // false for lines that are fully left-to-right, and an array of
-  // BidiSpan objects otherwise.
-  function getOrder(line, direction) {
-    var order = line.order;
-    if (order == null) { order = line.order = bidiOrdering(line.text, direction); }
-    return order
+    input.init(d);
   }
-
-  // EVENT HANDLING
-
-  // Lightweight event framework. on/off also work on DOM nodes,
-  // registering native DOM handlers.
-
-  var noHandlers = [];
-
-  var on = function(emitter, type, f) {
-    if (emitter.addEventListener) {
-      emitter.addEventListener(type, f, false);
-    } else if (emitter.attachEvent) {
-      emitter.attachEvent("on" + type, f);
-    } else {
-      var map = emitter._handlers || (emitter._handlers = {});
-      map[type] = (map[type] || noHandlers).concat(f);
-    }
-  };
-
-  function getHandlers(emitter, type) {
-    return emitter._handlers && emitter._handlers[type] || noHandlers
-  }
-
-  function off(emitter, type, f) {
-    if (emitter.removeEventListener) {
-      emitter.removeEventListener(type, f, false);
-    } else if (emitter.detachEvent) {
-      emitter.detachEvent("on" + type, f);
-    } else {
-      var map = emitter._handlers, arr = map && map[type];
-      if (arr) {
-        var index = indexOf(arr, f);
-        if (index > -1)
-          { map[type] = arr.slice(0, index).concat(arr.slice(index + 1)); }
-      }
-    }
-  }
-
-  function signal(emitter, type /*, values...*/) {
-    var handlers = getHandlers(emitter, type);
-    if (!handlers.length) { return }
-    var args = Array.prototype.slice.call(arguments, 2);
-    for (var i = 0; i < handlers.length; ++i) { handlers[i].apply(null, args); }
-  }
-
-  // The DOM events that CodeMirror handles can be overridden by
-  // registering a (non-DOM) handler on the editor for the event name,
-  // and preventDefault-ing the event in that handler.
-  function signalDOMEvent(cm, e, override) {
-    if (typeof e == "string")
-      { e = {type: e, preventDefault: function() { this.defaultPrevented = true; }}; }
-    signal(cm, override || e.type, cm, e);
-    return e_defaultPrevented(e) || e.codemirrorIgnore
-  }
-
-  function signalCursorActivity(cm) {
-    var arr = cm._handlers && cm._handlers.cursorActivity;
-    if (!arr) { return }
-    var set = cm.curOp.cursorActivityHandlers || (cm.curOp.cursorActivityHandlers = []);
-    for (var i = 0; i < arr.length; ++i) { if (indexOf(set, arr[i]) == -1)
-      { set.push(arr[i]); } }
-  }
-
-  function hasHandler(emitter, type) {
-    return getHandlers(emitter, type).length > 0
-  }
-
-  // Add on and off methods to a constructor's prototype, to make
-  // registering events on such objects more convenient.
-  function eventMixin(ctor) {
-    ctor.prototype.on = function(type, f) {on(this, type, f);};
-    ctor.prototype.off = function(type, f) {off(this, type, f);};
-  }
-
-  // Due to the fact that we still support jurassic IE versions, some
-  // compatibility wrappers are needed.
-
-  function e_preventDefault(e) {
-    if (e.preventDefault) { e.preventDefault(); }
-    else { e.returnValue = false; }
-  }
-  function e_stopPropagation(e) {
-    if (e.stopPropagation) { e.stopPropagation(); }
-    else { e.cancelBubble = true; }
-  }
-  function e_defaultPrevented(e) {
-    return e.defaultPrevented != null ? e.defaultPrevented : e.returnValue == false
-  }
-  function e_stop(e) {e_preventDefault(e); e_stopPropagation(e);}
-
-  function e_target(e) {return e.target || e.srcElement}
-  function e_button(e) {
-    var b = e.which;
-    if (b == null) {
-      if (e.button & 1) { b = 1; }
-      else if (e.button & 2) { b = 3; }
-      else if (e.button & 4) { b = 2; }
-    }
-    if (mac && e.ctrlKey && b == 1) { b = 3; }
-    return b
-  }
-
-  // Detect drag-and-drop
-  var dragAndDrop = function() {
-    // There is *some* kind of drag-and-drop support in IE6-8, but I
-    // couldn't get it to work yet.
-    if (ie && ie_version < 9) { return false }
-    var div = elt('div');
-    return "draggable" in div || "dragDrop" in div
-  }();
-
-  var zwspSupported;
-  function zeroWidthElement(measure) {
-    if (zwspSupported == null) {
-      var test = elt("span", "\u200b");
-      removeChildrenAndAdd(measure, elt("span", [test, document.createTextNode("x")]));
-      if (measure.firstChild.offsetHeight != 0)
-        { zwspSupported = test.offsetWidth <= 1 && test.offsetHeight > 2 && !(ie && ie_version < 8); }
-    }
-    var node = zwspSupported ? elt("span", "\u200b") :
-      elt("span", "\u00a0", null, "display: inline-block; width: 1px; margin-right: -1px");
-    node.setAttribute("cm-text", "");
-    return node
-  }
-
-  // Feature-detect IE's crummy client rect reporting for bidi text
-  var badBidiRects;
-  function hasBadBidiRects(measure) {
-    if (badBidiRects != null) { return badBidiRects }
-    var txt = removeChildrenAndAdd(measure, document.createTextNode("A\u062eA"));
-    var r0 = range(txt, 0, 1).getBoundingClientRect();
-    var r1 = range(txt, 1, 2).getBoundingClientRect();
-    removeChildren(measure);
-    if (!r0 || r0.left == r0.right) { return false } // Safari returns null in some cases (#2780)
-    return badBidiRects = (r1.right - r0.right < 3)
-  }
-
-  // See if "".split is the broken IE version, if so, provide an
-  // alternative way to split lines.
-  var splitLinesAuto = "\n\nb".split(/\n/).length != 3 ? function (string) {
-    var pos = 0, result = [], l = string.length;
-    while (pos <= l) {
-      var nl = string.indexOf("\n", pos);
-      if (nl == -1) { nl = string.length; }
-      var line = string.slice(pos, string.charAt(nl - 1) == "\r" ? nl - 1 : nl);
-      var rt = line.indexOf("\r");
-      if (rt != -1) {
-        result.push(line.slice(0, rt));
-        pos += rt + 1;
-      } else {
-        result.push(line);
-        pos = nl + 1;
-      }
-    }
-    return result
-  } : function (string) { return string.split(/\r\n?|\n/); };
-
-  var hasSelection = window.getSelection ? function (te) {
-    try { return te.selectionStart != te.selectionEnd }
-    catch(e) { return false }
-  } : function (te) {
-    var range;
-    try {range = te.ownerDocument.selection.createRange();}
-    catch(e) {}
-    if (!range || range.parentElement() != te) { return false }
-    return range.compareEndPoints("StartToEnd", range) != 0
-  };
-
-  var hasCopyEvent = (function () {
-    var e = elt("div");
-    if ("oncopy" in e) { return true }
-    e.setAttribute("oncopy", "return;");
-    return typeof e.oncopy == "function"
-  })();
-
-  var badZoomedRects = null;
-  function hasBadZoomedRects(measure) {
-    if (badZoomedRects != null) { return badZoomedRects }
-    var node = removeChildrenAndAdd(measure, elt("span", "x"));
-    var normal = node.getBoundingClientRect();
-    var fromRange = range(node, 0, 1).getBoundingClientRect();
-    return badZoomedRects = Math.abs(normal.left - fromRange.left) > 1
-  }
-
-  // Known modes, by name and by MIME
-  var modes = {}, mimeModes = {};
-
-  // Extra arguments are stored as the mode's dependencies, which is
-  // used by (legacy) mechanisms like loadmode.js to automatically
-  // load a mode. (Preferred mechanism is the require/define calls.)
-  function defineMode(name, mode) {
-    if (arguments.length > 2)
-      { mode.dependencies = Array.prototype.slice.call(arguments, 2); }
-    modes[name] = mode;
-  }
-
-  function defineMIME(mime, spec) {
-    mimeModes[mime] = spec;
-  }
-
-  // Given a MIME type, a {name, ...options} config object, or a name
-  // string, return a mode config object.
-  function resolveMode(spec) {
-    if (typeof spec == "string" && mimeModes.hasOwnProperty(spec)) {
-      spec = mimeModes[spec];
-    } else if (spec && typeof spec.name == "string" && mimeModes.hasOwnProperty(spec.name)) {
-      var found = mimeModes[spec.name];
-      if (typeof found == "string") { found = {name: found}; }
-      spec = createObj(found, spec);
-      spec.name = found.name;
-    } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+xml$/.test(spec)) {
-      return resolveMode("application/xml")
-    } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+json$/.test(spec)) {
-      return resolveMode("application/json")
-    }
-    if (typeof spec == "string") { return {name: spec} }
-    else { return spec || {name: "null"} }
-  }
-
-  // Given a mode spec (anything that resolveMode accepts), find and
-  // initialize an actual mode object.
-  function getMode(options, spec) {
-    spec = resolveMode(spec);
-    var mfactory = modes[spec.name];
-    if (!mfactory) { return getMode(options, "text/plain") }
-    var modeObj = mfactory(options, spec);
-    if (modeExtensions.hasOwnProperty(spec.name)) {
-      var exts = modeExtensions[spec.name];
-      for (var prop in exts) {
-        if (!exts.hasOwnProperty(prop)) { continue }
-        if (modeObj.hasOwnProperty(prop)) { modeObj["_" + prop] = modeObj[prop]; }
-        modeObj[prop] = exts[prop];
-      }
-    }
-    modeObj.name = spec.name;
-    if (spec.helperType) { modeObj.helperType = spec.helperType; }
-    if (spec.modeProps) { for (var prop$1 in spec.modeProps)
-      { modeObj[prop$1] = spec.modeProps[prop$1]; } }
-
-    return modeObj
-  }
-
-  // This can be used to attach properties to mode objects from
-  // outside the actual mode definition.
-  var modeExtensions = {};
-  function extendMode(mode, properties) {
-    var exts = modeExtensions.hasOwnProperty(mode) ? modeExtensions[mode] : (modeExtensions[mode] = {});
-    copyObj(properties, exts);
-  }
-
-  function copyState(mode, state) {
-    if (state === true) { return state }
-    if (mode.copyState) { return mode.copyState(state) }
-    var nstate = {};
-    for (var n in state) {
-      var val = state[n];
-      if (val instanceof Array) { val = val.concat([]); }
-      nstate[n] = val;
-    }
-    return nstate
-  }
-
-  // Given a mode and a state (for that mode), find the inner mode and
-  // state at the position that the state refers to.
-  function innerMode(mode, state) {
-    var info;
-    while (mode.innerMode) {
-      info = mode.innerMode(state);
-      if (!info || info.mode == mode) { break }
-      state = info.state;
-      mode = info.mode;
-    }
-    return info || {mode: mode, state: state}
-  }
-
-  function startState(mode, a1, a2) {
-    return mode.startState ? mode.startState(a1, a2) : true
-  }
-
-  // STRING STREAM
-
-  // Fed to the mode parsers, provides helper functions to make
-  // parsers more succinct.
-
-  var StringStream = function(string, tabSize, lineOracle) {
-    this.pos = this.start = 0;
-    this.string = string;
-    this.tabSize = tabSize || 8;
-    this.lastColumnPos = this.lastColumnValue = 0;
-    this.lineStart = 0;
-    this.lineOracle = lineOracle;
-  };
-
-  StringStream.prototype.eol = function () {return this.pos >= this.string.length};
-  StringStream.prototype.sol = function () {return this.pos == this.lineStart};
-  StringStream.prototype.peek = function () {return this.string.charAt(this.pos) || undefined};
-  StringStream.prototype.next = function () {
-    if (this.pos < this.string.length)
-      { return this.string.charAt(this.pos++) }
-  };
-  StringStream.prototype.eat = function (match) {
-    var ch = this.string.charAt(this.pos);
-    var ok;
-    if (typeof match == "string") { ok = ch == match; }
-    else { ok = ch && (match.test ? match.test(ch) : match(ch)); }
-    if (ok) {++this.pos; return ch}
-  };
-  StringStream.prototype.eatWhile = function (match) {
-    var start = this.pos;
-    while (this.eat(match)){}
-    return this.pos > start
-  };
-  StringStream.prototype.eatSpace = function () {
-    var start = this.pos;
-    while (/[\s\u00a0]/.test(this.string.charAt(this.pos))) { ++this.pos; }
-    return this.pos > start
-  };
-  StringStream.prototype.skipToEnd = function () {this.pos = this.string.length;};
-  StringStream.prototype.skipTo = function (ch) {
-    var found = this.string.indexOf(ch, this.pos);
-    if (found > -1) {this.pos = found; return true}
-  };
-  StringStream.prototype.backUp = function (n) {this.pos -= n;};
-  StringStream.prototype.column = function () {
-    if (this.lastColumnPos < this.start) {
-      this.lastColumnValue = countColumn(this.string, this.start, this.tabSize, this.lastColumnPos, this.lastColumnValue);
-      this.lastColumnPos = this.start;
-    }
-    return this.lastColumnValue - (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
-  };
-  StringStream.prototype.indentation = function () {
-    return countColumn(this.string, null, this.tabSize) -
-      (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
-  };
-  StringStream.prototype.match = function (pattern, consume, caseInsensitive) {
-    if (typeof pattern == "string") {
-      var cased = function (str) { return caseInsensitive ? str.toLowerCase() : str; };
-      var substr = this.string.substr(this.pos, pattern.length);
-      if (cased(substr) == cased(pattern)) {
-        if (consume !== false) { this.pos += pattern.length; }
-        return true
-      }
-    } else {
-      var match = this.string.slice(this.pos).match(pattern);
-      if (match && match.index > 0) { return null }
-      if (match && consume !== false) { this.pos += match[0].length; }
-      return match
-    }
-  };
-  StringStream.prototype.current = function (){return this.string.slice(this.start, this.pos)};
-  StringStream.prototype.hideFirstChars = function (n, inner) {
-    this.lineStart += n;
-    try { return inner() }
-    finally { this.lineStart -= n; }
-  };
-  StringStream.prototype.lookAhead = function (n) {
-    var oracle = this.lineOracle;
-    return oracle && oracle.lookAhead(n)
-  };
-  StringStream.prototype.baseToken = function () {
-    var oracle = this.lineOracle;
-    return oracle && oracle.baseToken(this.pos)
-  };
 
   // Find the line object corresponding to the given line number.
   function getLine(doc, n) {
@@ -7931,280 +7226,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var out = [];
     for (var i = 0; i < array.length; i++) { out[i] = clipPos(doc, array[i]); }
     return out
-  }
-
-  var SavedContext = function(state, lookAhead) {
-    this.state = state;
-    this.lookAhead = lookAhead;
-  };
-
-  var Context = function(doc, state, line, lookAhead) {
-    this.state = state;
-    this.doc = doc;
-    this.line = line;
-    this.maxLookAhead = lookAhead || 0;
-    this.baseTokens = null;
-    this.baseTokenPos = 1;
-  };
-
-  Context.prototype.lookAhead = function (n) {
-    var line = this.doc.getLine(this.line + n);
-    if (line != null && n > this.maxLookAhead) { this.maxLookAhead = n; }
-    return line
-  };
-
-  Context.prototype.baseToken = function (n) {
-    if (!this.baseTokens) { return null }
-    while (this.baseTokens[this.baseTokenPos] <= n)
-      { this.baseTokenPos += 2; }
-    var type = this.baseTokens[this.baseTokenPos + 1];
-    return {type: type && type.replace(/( |^)overlay .*/, ""),
-            size: this.baseTokens[this.baseTokenPos] - n}
-  };
-
-  Context.prototype.nextLine = function () {
-    this.line++;
-    if (this.maxLookAhead > 0) { this.maxLookAhead--; }
-  };
-
-  Context.fromSaved = function (doc, saved, line) {
-    if (saved instanceof SavedContext)
-      { return new Context(doc, copyState(doc.mode, saved.state), line, saved.lookAhead) }
-    else
-      { return new Context(doc, copyState(doc.mode, saved), line) }
-  };
-
-  Context.prototype.save = function (copy) {
-    var state = copy !== false ? copyState(this.doc.mode, this.state) : this.state;
-    return this.maxLookAhead > 0 ? new SavedContext(state, this.maxLookAhead) : state
-  };
-
-
-  // Compute a style array (an array starting with a mode generation
-  // -- for invalidation -- followed by pairs of end positions and
-  // style strings), which is used to highlight the tokens on the
-  // line.
-  function highlightLine(cm, line, context, forceToEnd) {
-    // A styles array always starts with a number identifying the
-    // mode/overlays that it is based on (for easy invalidation).
-    var st = [cm.state.modeGen], lineClasses = {};
-    // Compute the base array of styles
-    runMode(cm, line.text, cm.doc.mode, context, function (end, style) { return st.push(end, style); },
-            lineClasses, forceToEnd);
-    var state = context.state;
-
-    // Run overlays, adjust style array.
-    var loop = function ( o ) {
-      context.baseTokens = st;
-      var overlay = cm.state.overlays[o], i = 1, at = 0;
-      context.state = true;
-      runMode(cm, line.text, overlay.mode, context, function (end, style) {
-        var start = i;
-        // Ensure there's a token end at the current position, and that i points at it
-        while (at < end) {
-          var i_end = st[i];
-          if (i_end > end)
-            { st.splice(i, 1, end, st[i+1], i_end); }
-          i += 2;
-          at = Math.min(end, i_end);
-        }
-        if (!style) { return }
-        if (overlay.opaque) {
-          st.splice(start, i - start, end, "overlay " + style);
-          i = start + 2;
-        } else {
-          for (; start < i; start += 2) {
-            var cur = st[start+1];
-            st[start+1] = (cur ? cur + " " : "") + "overlay " + style;
-          }
-        }
-      }, lineClasses);
-      context.state = state;
-      context.baseTokens = null;
-      context.baseTokenPos = 1;
-    };
-
-    for (var o = 0; o < cm.state.overlays.length; ++o) loop( o );
-
-    return {styles: st, classes: lineClasses.bgClass || lineClasses.textClass ? lineClasses : null}
-  }
-
-  function getLineStyles(cm, line, updateFrontier) {
-    if (!line.styles || line.styles[0] != cm.state.modeGen) {
-      var context = getContextBefore(cm, lineNo(line));
-      var resetState = line.text.length > cm.options.maxHighlightLength && copyState(cm.doc.mode, context.state);
-      var result = highlightLine(cm, line, context);
-      if (resetState) { context.state = resetState; }
-      line.stateAfter = context.save(!resetState);
-      line.styles = result.styles;
-      if (result.classes) { line.styleClasses = result.classes; }
-      else if (line.styleClasses) { line.styleClasses = null; }
-      if (updateFrontier === cm.doc.highlightFrontier)
-        { cm.doc.modeFrontier = Math.max(cm.doc.modeFrontier, ++cm.doc.highlightFrontier); }
-    }
-    return line.styles
-  }
-
-  function getContextBefore(cm, n, precise) {
-    var doc = cm.doc, display = cm.display;
-    if (!doc.mode.startState) { return new Context(doc, true, n) }
-    var start = findStartLine(cm, n, precise);
-    var saved = start > doc.first && getLine(doc, start - 1).stateAfter;
-    var context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, startState(doc.mode), start);
-
-    doc.iter(start, n, function (line) {
-      processLine(cm, line.text, context);
-      var pos = context.line;
-      line.stateAfter = pos == n - 1 || pos % 5 == 0 || pos >= display.viewFrom && pos < display.viewTo ? context.save() : null;
-      context.nextLine();
-    });
-    if (precise) { doc.modeFrontier = context.line; }
-    return context
-  }
-
-  // Lightweight form of highlight -- proceed over this line and
-  // update state, but don't save a style array. Used for lines that
-  // aren't currently visible.
-  function processLine(cm, text, context, startAt) {
-    var mode = cm.doc.mode;
-    var stream = new StringStream(text, cm.options.tabSize, context);
-    stream.start = stream.pos = startAt || 0;
-    if (text == "") { callBlankLine(mode, context.state); }
-    while (!stream.eol()) {
-      readToken(mode, stream, context.state);
-      stream.start = stream.pos;
-    }
-  }
-
-  function callBlankLine(mode, state) {
-    if (mode.blankLine) { return mode.blankLine(state) }
-    if (!mode.innerMode) { return }
-    var inner = innerMode(mode, state);
-    if (inner.mode.blankLine) { return inner.mode.blankLine(inner.state) }
-  }
-
-  function readToken(mode, stream, state, inner) {
-    for (var i = 0; i < 10; i++) {
-      if (inner) { inner[0] = innerMode(mode, state).mode; }
-      var style = mode.token(stream, state);
-      if (stream.pos > stream.start) { return style }
-    }
-    throw new Error("Mode " + mode.name + " failed to advance stream.")
-  }
-
-  var Token = function(stream, type, state) {
-    this.start = stream.start; this.end = stream.pos;
-    this.string = stream.current();
-    this.type = type || null;
-    this.state = state;
-  };
-
-  // Utility for getTokenAt and getLineTokens
-  function takeToken(cm, pos, precise, asArray) {
-    var doc = cm.doc, mode = doc.mode, style;
-    pos = clipPos(doc, pos);
-    var line = getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
-    var stream = new StringStream(line.text, cm.options.tabSize, context), tokens;
-    if (asArray) { tokens = []; }
-    while ((asArray || stream.pos < pos.ch) && !stream.eol()) {
-      stream.start = stream.pos;
-      style = readToken(mode, stream, context.state);
-      if (asArray) { tokens.push(new Token(stream, style, copyState(doc.mode, context.state))); }
-    }
-    return asArray ? tokens : new Token(stream, style, context.state)
-  }
-
-  function extractLineClasses(type, output) {
-    if (type) { for (;;) {
-      var lineClass = type.match(/(?:^|\s+)line-(background-)?(\S+)/);
-      if (!lineClass) { break }
-      type = type.slice(0, lineClass.index) + type.slice(lineClass.index + lineClass[0].length);
-      var prop = lineClass[1] ? "bgClass" : "textClass";
-      if (output[prop] == null)
-        { output[prop] = lineClass[2]; }
-      else if (!(new RegExp("(?:^|\\s)" + lineClass[2] + "(?:$|\\s)")).test(output[prop]))
-        { output[prop] += " " + lineClass[2]; }
-    } }
-    return type
-  }
-
-  // Run the given mode's parser over a line, calling f for each token.
-  function runMode(cm, text, mode, context, f, lineClasses, forceToEnd) {
-    var flattenSpans = mode.flattenSpans;
-    if (flattenSpans == null) { flattenSpans = cm.options.flattenSpans; }
-    var curStart = 0, curStyle = null;
-    var stream = new StringStream(text, cm.options.tabSize, context), style;
-    var inner = cm.options.addModeClass && [null];
-    if (text == "") { extractLineClasses(callBlankLine(mode, context.state), lineClasses); }
-    while (!stream.eol()) {
-      if (stream.pos > cm.options.maxHighlightLength) {
-        flattenSpans = false;
-        if (forceToEnd) { processLine(cm, text, context, stream.pos); }
-        stream.pos = text.length;
-        style = null;
-      } else {
-        style = extractLineClasses(readToken(mode, stream, context.state, inner), lineClasses);
-      }
-      if (inner) {
-        var mName = inner[0].name;
-        if (mName) { style = "m-" + (style ? mName + " " + style : mName); }
-      }
-      if (!flattenSpans || curStyle != style) {
-        while (curStart < stream.start) {
-          curStart = Math.min(stream.start, curStart + 5000);
-          f(curStart, curStyle);
-        }
-        curStyle = style;
-      }
-      stream.start = stream.pos;
-    }
-    while (curStart < stream.pos) {
-      // Webkit seems to refuse to render text nodes longer than 57444
-      // characters, and returns inaccurate measurements in nodes
-      // starting around 5000 chars.
-      var pos = Math.min(stream.pos, curStart + 5000);
-      f(pos, curStyle);
-      curStart = pos;
-    }
-  }
-
-  // Finds the line to start with when starting a parse. Tries to
-  // find a line with a stateAfter, so that it can start with a
-  // valid state. If that fails, it returns the line with the
-  // smallest indentation, which tends to need the least context to
-  // parse correctly.
-  function findStartLine(cm, n, precise) {
-    var minindent, minline, doc = cm.doc;
-    var lim = precise ? -1 : n - (cm.doc.mode.innerMode ? 1000 : 100);
-    for (var search = n; search > lim; --search) {
-      if (search <= doc.first) { return doc.first }
-      var line = getLine(doc, search - 1), after = line.stateAfter;
-      if (after && (!precise || search + (after instanceof SavedContext ? after.lookAhead : 0) <= doc.modeFrontier))
-        { return search }
-      var indented = countColumn(line.text, null, cm.options.tabSize);
-      if (minline == null || minindent > indented) {
-        minline = search - 1;
-        minindent = indented;
-      }
-    }
-    return minline
-  }
-
-  function retreatFrontier(doc, n) {
-    doc.modeFrontier = Math.min(doc.modeFrontier, n);
-    if (doc.highlightFrontier < n - 10) { return }
-    var start = doc.first;
-    for (var line = n - 1; line > start; line--) {
-      var saved = getLine(doc, line).stateAfter;
-      // change is on 3
-      // state on line 1 looked ahead 2 -- so saw 3
-      // test 1 + 2 < 3 should cover this
-      if (saved && (!(saved instanceof SavedContext) || line + saved.lookAhead < n)) {
-        start = line + 1;
-        break
-      }
-    }
-    doc.highlightFrontier = Math.min(doc.highlightFrontier, start);
   }
 
   // Optimize some code when these features are not used.
@@ -8445,8 +7466,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // Test whether there exists a collapsed span that partially
   // overlaps (covers the start or end, but not both) of a new span.
   // Such overlap is not allowed.
-  function conflictingCollapsedRange(doc, lineNo, from, to, marker) {
-    var line = getLine(doc, lineNo);
+  function conflictingCollapsedRange(doc, lineNo$$1, from, to, marker) {
+    var line = getLine(doc, lineNo$$1);
     var sps = sawCollapsedSpans && line.markedSpans;
     if (sps) { for (var i = 0; i < sps.length; ++i) {
       var sp = sps[i];
@@ -8593,6 +7614,860 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         d.maxLine = line;
       }
     });
+  }
+
+  // BIDI HELPERS
+
+  function iterateBidiSections(order, from, to, f) {
+    if (!order) { return f(from, to, "ltr", 0) }
+    var found = false;
+    for (var i = 0; i < order.length; ++i) {
+      var part = order[i];
+      if (part.from < to && part.to > from || from == to && part.to == from) {
+        f(Math.max(part.from, from), Math.min(part.to, to), part.level == 1 ? "rtl" : "ltr", i);
+        found = true;
+      }
+    }
+    if (!found) { f(from, to, "ltr"); }
+  }
+
+  var bidiOther = null;
+  function getBidiPartAt(order, ch, sticky) {
+    var found;
+    bidiOther = null;
+    for (var i = 0; i < order.length; ++i) {
+      var cur = order[i];
+      if (cur.from < ch && cur.to > ch) { return i }
+      if (cur.to == ch) {
+        if (cur.from != cur.to && sticky == "before") { found = i; }
+        else { bidiOther = i; }
+      }
+      if (cur.from == ch) {
+        if (cur.from != cur.to && sticky != "before") { found = i; }
+        else { bidiOther = i; }
+      }
+    }
+    return found != null ? found : bidiOther
+  }
+
+  // Bidirectional ordering algorithm
+  // See http://unicode.org/reports/tr9/tr9-13.html for the algorithm
+  // that this (partially) implements.
+
+  // One-char codes used for character types:
+  // L (L):   Left-to-Right
+  // R (R):   Right-to-Left
+  // r (AL):  Right-to-Left Arabic
+  // 1 (EN):  European Number
+  // + (ES):  European Number Separator
+  // % (ET):  European Number Terminator
+  // n (AN):  Arabic Number
+  // , (CS):  Common Number Separator
+  // m (NSM): Non-Spacing Mark
+  // b (BN):  Boundary Neutral
+  // s (B):   Paragraph Separator
+  // t (S):   Segment Separator
+  // w (WS):  Whitespace
+  // N (ON):  Other Neutrals
+
+  // Returns null if characters are ordered as they appear
+  // (left-to-right), or an array of sections ({from, to, level}
+  // objects) in the order in which they occur visually.
+  var bidiOrdering = (function() {
+    // Character types for codepoints 0 to 0xff
+    var lowTypes = "bbbbbbbbbtstwsbbbbbbbbbbbbbbssstwNN%%%NNNNNN,N,N1111111111NNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNbbbbbbsbbbbbbbbbbbbbbbbbbbbbbbbbb,N%%%%NNNNLNNNNN%%11NLNNN1LNNNNNLLLLLLLLLLLLLLLLLLLLLLLNLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLN";
+    // Character types for codepoints 0x600 to 0x6f9
+    var arabicTypes = "nnnnnnNNr%%r,rNNmmmmmmmmmmmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmmmmmmmmmmmmmmmnnnnnnnnnn%nnrrrmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmnNmmmmmmrrmmNmmmmrr1111111111";
+    function charType(code) {
+      if (code <= 0xf7) { return lowTypes.charAt(code) }
+      else if (0x590 <= code && code <= 0x5f4) { return "R" }
+      else if (0x600 <= code && code <= 0x6f9) { return arabicTypes.charAt(code - 0x600) }
+      else if (0x6ee <= code && code <= 0x8ac) { return "r" }
+      else if (0x2000 <= code && code <= 0x200b) { return "w" }
+      else if (code == 0x200c) { return "b" }
+      else { return "L" }
+    }
+
+    var bidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac]/;
+    var isNeutral = /[stwN]/, isStrong = /[LRr]/, countsAsLeft = /[Lb1n]/, countsAsNum = /[1n]/;
+
+    function BidiSpan(level, from, to) {
+      this.level = level;
+      this.from = from; this.to = to;
+    }
+
+    return function(str, direction) {
+      var outerType = direction == "ltr" ? "L" : "R";
+
+      if (str.length == 0 || direction == "ltr" && !bidiRE.test(str)) { return false }
+      var len = str.length, types = [];
+      for (var i = 0; i < len; ++i)
+        { types.push(charType(str.charCodeAt(i))); }
+
+      // W1. Examine each non-spacing mark (NSM) in the level run, and
+      // change the type of the NSM to the type of the previous
+      // character. If the NSM is at the start of the level run, it will
+      // get the type of sor.
+      for (var i$1 = 0, prev = outerType; i$1 < len; ++i$1) {
+        var type = types[i$1];
+        if (type == "m") { types[i$1] = prev; }
+        else { prev = type; }
+      }
+
+      // W2. Search backwards from each instance of a European number
+      // until the first strong type (R, L, AL, or sor) is found. If an
+      // AL is found, change the type of the European number to Arabic
+      // number.
+      // W3. Change all ALs to R.
+      for (var i$2 = 0, cur = outerType; i$2 < len; ++i$2) {
+        var type$1 = types[i$2];
+        if (type$1 == "1" && cur == "r") { types[i$2] = "n"; }
+        else if (isStrong.test(type$1)) { cur = type$1; if (type$1 == "r") { types[i$2] = "R"; } }
+      }
+
+      // W4. A single European separator between two European numbers
+      // changes to a European number. A single common separator between
+      // two numbers of the same type changes to that type.
+      for (var i$3 = 1, prev$1 = types[0]; i$3 < len - 1; ++i$3) {
+        var type$2 = types[i$3];
+        if (type$2 == "+" && prev$1 == "1" && types[i$3+1] == "1") { types[i$3] = "1"; }
+        else if (type$2 == "," && prev$1 == types[i$3+1] &&
+                 (prev$1 == "1" || prev$1 == "n")) { types[i$3] = prev$1; }
+        prev$1 = type$2;
+      }
+
+      // W5. A sequence of European terminators adjacent to European
+      // numbers changes to all European numbers.
+      // W6. Otherwise, separators and terminators change to Other
+      // Neutral.
+      for (var i$4 = 0; i$4 < len; ++i$4) {
+        var type$3 = types[i$4];
+        if (type$3 == ",") { types[i$4] = "N"; }
+        else if (type$3 == "%") {
+          var end = (void 0);
+          for (end = i$4 + 1; end < len && types[end] == "%"; ++end) {}
+          var replace = (i$4 && types[i$4-1] == "!") || (end < len && types[end] == "1") ? "1" : "N";
+          for (var j = i$4; j < end; ++j) { types[j] = replace; }
+          i$4 = end - 1;
+        }
+      }
+
+      // W7. Search backwards from each instance of a European number
+      // until the first strong type (R, L, or sor) is found. If an L is
+      // found, then change the type of the European number to L.
+      for (var i$5 = 0, cur$1 = outerType; i$5 < len; ++i$5) {
+        var type$4 = types[i$5];
+        if (cur$1 == "L" && type$4 == "1") { types[i$5] = "L"; }
+        else if (isStrong.test(type$4)) { cur$1 = type$4; }
+      }
+
+      // N1. A sequence of neutrals takes the direction of the
+      // surrounding strong text if the text on both sides has the same
+      // direction. European and Arabic numbers act as if they were R in
+      // terms of their influence on neutrals. Start-of-level-run (sor)
+      // and end-of-level-run (eor) are used at level run boundaries.
+      // N2. Any remaining neutrals take the embedding direction.
+      for (var i$6 = 0; i$6 < len; ++i$6) {
+        if (isNeutral.test(types[i$6])) {
+          var end$1 = (void 0);
+          for (end$1 = i$6 + 1; end$1 < len && isNeutral.test(types[end$1]); ++end$1) {}
+          var before = (i$6 ? types[i$6-1] : outerType) == "L";
+          var after = (end$1 < len ? types[end$1] : outerType) == "L";
+          var replace$1 = before == after ? (before ? "L" : "R") : outerType;
+          for (var j$1 = i$6; j$1 < end$1; ++j$1) { types[j$1] = replace$1; }
+          i$6 = end$1 - 1;
+        }
+      }
+
+      // Here we depart from the documented algorithm, in order to avoid
+      // building up an actual levels array. Since there are only three
+      // levels (0, 1, 2) in an implementation that doesn't take
+      // explicit embedding into account, we can build up the order on
+      // the fly, without following the level-based algorithm.
+      var order = [], m;
+      for (var i$7 = 0; i$7 < len;) {
+        if (countsAsLeft.test(types[i$7])) {
+          var start = i$7;
+          for (++i$7; i$7 < len && countsAsLeft.test(types[i$7]); ++i$7) {}
+          order.push(new BidiSpan(0, start, i$7));
+        } else {
+          var pos = i$7, at = order.length;
+          for (++i$7; i$7 < len && types[i$7] != "L"; ++i$7) {}
+          for (var j$2 = pos; j$2 < i$7;) {
+            if (countsAsNum.test(types[j$2])) {
+              if (pos < j$2) { order.splice(at, 0, new BidiSpan(1, pos, j$2)); }
+              var nstart = j$2;
+              for (++j$2; j$2 < i$7 && countsAsNum.test(types[j$2]); ++j$2) {}
+              order.splice(at, 0, new BidiSpan(2, nstart, j$2));
+              pos = j$2;
+            } else { ++j$2; }
+          }
+          if (pos < i$7) { order.splice(at, 0, new BidiSpan(1, pos, i$7)); }
+        }
+      }
+      if (direction == "ltr") {
+        if (order[0].level == 1 && (m = str.match(/^\s+/))) {
+          order[0].from = m[0].length;
+          order.unshift(new BidiSpan(0, 0, m[0].length));
+        }
+        if (lst(order).level == 1 && (m = str.match(/\s+$/))) {
+          lst(order).to -= m[0].length;
+          order.push(new BidiSpan(0, len - m[0].length, len));
+        }
+      }
+
+      return direction == "rtl" ? order.reverse() : order
+    }
+  })();
+
+  // Get the bidi ordering for the given line (and cache it). Returns
+  // false for lines that are fully left-to-right, and an array of
+  // BidiSpan objects otherwise.
+  function getOrder(line, direction) {
+    var order = line.order;
+    if (order == null) { order = line.order = bidiOrdering(line.text, direction); }
+    return order
+  }
+
+  // EVENT HANDLING
+
+  // Lightweight event framework. on/off also work on DOM nodes,
+  // registering native DOM handlers.
+
+  var noHandlers = [];
+
+  var on = function(emitter, type, f) {
+    if (emitter.addEventListener) {
+      emitter.addEventListener(type, f, false);
+    } else if (emitter.attachEvent) {
+      emitter.attachEvent("on" + type, f);
+    } else {
+      var map$$1 = emitter._handlers || (emitter._handlers = {});
+      map$$1[type] = (map$$1[type] || noHandlers).concat(f);
+    }
+  };
+
+  function getHandlers(emitter, type) {
+    return emitter._handlers && emitter._handlers[type] || noHandlers
+  }
+
+  function off(emitter, type, f) {
+    if (emitter.removeEventListener) {
+      emitter.removeEventListener(type, f, false);
+    } else if (emitter.detachEvent) {
+      emitter.detachEvent("on" + type, f);
+    } else {
+      var map$$1 = emitter._handlers, arr = map$$1 && map$$1[type];
+      if (arr) {
+        var index = indexOf(arr, f);
+        if (index > -1)
+          { map$$1[type] = arr.slice(0, index).concat(arr.slice(index + 1)); }
+      }
+    }
+  }
+
+  function signal(emitter, type /*, values...*/) {
+    var handlers = getHandlers(emitter, type);
+    if (!handlers.length) { return }
+    var args = Array.prototype.slice.call(arguments, 2);
+    for (var i = 0; i < handlers.length; ++i) { handlers[i].apply(null, args); }
+  }
+
+  // The DOM events that CodeMirror handles can be overridden by
+  // registering a (non-DOM) handler on the editor for the event name,
+  // and preventDefault-ing the event in that handler.
+  function signalDOMEvent(cm, e, override) {
+    if (typeof e == "string")
+      { e = {type: e, preventDefault: function() { this.defaultPrevented = true; }}; }
+    signal(cm, override || e.type, cm, e);
+    return e_defaultPrevented(e) || e.codemirrorIgnore
+  }
+
+  function signalCursorActivity(cm) {
+    var arr = cm._handlers && cm._handlers.cursorActivity;
+    if (!arr) { return }
+    var set = cm.curOp.cursorActivityHandlers || (cm.curOp.cursorActivityHandlers = []);
+    for (var i = 0; i < arr.length; ++i) { if (indexOf(set, arr[i]) == -1)
+      { set.push(arr[i]); } }
+  }
+
+  function hasHandler(emitter, type) {
+    return getHandlers(emitter, type).length > 0
+  }
+
+  // Add on and off methods to a constructor's prototype, to make
+  // registering events on such objects more convenient.
+  function eventMixin(ctor) {
+    ctor.prototype.on = function(type, f) {on(this, type, f);};
+    ctor.prototype.off = function(type, f) {off(this, type, f);};
+  }
+
+  // Due to the fact that we still support jurassic IE versions, some
+  // compatibility wrappers are needed.
+
+  function e_preventDefault(e) {
+    if (e.preventDefault) { e.preventDefault(); }
+    else { e.returnValue = false; }
+  }
+  function e_stopPropagation(e) {
+    if (e.stopPropagation) { e.stopPropagation(); }
+    else { e.cancelBubble = true; }
+  }
+  function e_defaultPrevented(e) {
+    return e.defaultPrevented != null ? e.defaultPrevented : e.returnValue == false
+  }
+  function e_stop(e) {e_preventDefault(e); e_stopPropagation(e);}
+
+  function e_target(e) {return e.target || e.srcElement}
+  function e_button(e) {
+    var b = e.which;
+    if (b == null) {
+      if (e.button & 1) { b = 1; }
+      else if (e.button & 2) { b = 3; }
+      else if (e.button & 4) { b = 2; }
+    }
+    if (mac && e.ctrlKey && b == 1) { b = 3; }
+    return b
+  }
+
+  // Detect drag-and-drop
+  var dragAndDrop = function() {
+    // There is *some* kind of drag-and-drop support in IE6-8, but I
+    // couldn't get it to work yet.
+    if (ie && ie_version < 9) { return false }
+    var div = elt('div');
+    return "draggable" in div || "dragDrop" in div
+  }();
+
+  var zwspSupported;
+  function zeroWidthElement(measure) {
+    if (zwspSupported == null) {
+      var test = elt("span", "\u200b");
+      removeChildrenAndAdd(measure, elt("span", [test, document.createTextNode("x")]));
+      if (measure.firstChild.offsetHeight != 0)
+        { zwspSupported = test.offsetWidth <= 1 && test.offsetHeight > 2 && !(ie && ie_version < 8); }
+    }
+    var node = zwspSupported ? elt("span", "\u200b") :
+      elt("span", "\u00a0", null, "display: inline-block; width: 1px; margin-right: -1px");
+    node.setAttribute("cm-text", "");
+    return node
+  }
+
+  // Feature-detect IE's crummy client rect reporting for bidi text
+  var badBidiRects;
+  function hasBadBidiRects(measure) {
+    if (badBidiRects != null) { return badBidiRects }
+    var txt = removeChildrenAndAdd(measure, document.createTextNode("A\u062eA"));
+    var r0 = range(txt, 0, 1).getBoundingClientRect();
+    var r1 = range(txt, 1, 2).getBoundingClientRect();
+    removeChildren(measure);
+    if (!r0 || r0.left == r0.right) { return false } // Safari returns null in some cases (#2780)
+    return badBidiRects = (r1.right - r0.right < 3)
+  }
+
+  // See if "".split is the broken IE version, if so, provide an
+  // alternative way to split lines.
+  var splitLinesAuto = "\n\nb".split(/\n/).length != 3 ? function (string) {
+    var pos = 0, result = [], l = string.length;
+    while (pos <= l) {
+      var nl = string.indexOf("\n", pos);
+      if (nl == -1) { nl = string.length; }
+      var line = string.slice(pos, string.charAt(nl - 1) == "\r" ? nl - 1 : nl);
+      var rt = line.indexOf("\r");
+      if (rt != -1) {
+        result.push(line.slice(0, rt));
+        pos += rt + 1;
+      } else {
+        result.push(line);
+        pos = nl + 1;
+      }
+    }
+    return result
+  } : function (string) { return string.split(/\r\n?|\n/); };
+
+  var hasSelection = window.getSelection ? function (te) {
+    try { return te.selectionStart != te.selectionEnd }
+    catch(e) { return false }
+  } : function (te) {
+    var range$$1;
+    try {range$$1 = te.ownerDocument.selection.createRange();}
+    catch(e) {}
+    if (!range$$1 || range$$1.parentElement() != te) { return false }
+    return range$$1.compareEndPoints("StartToEnd", range$$1) != 0
+  };
+
+  var hasCopyEvent = (function () {
+    var e = elt("div");
+    if ("oncopy" in e) { return true }
+    e.setAttribute("oncopy", "return;");
+    return typeof e.oncopy == "function"
+  })();
+
+  var badZoomedRects = null;
+  function hasBadZoomedRects(measure) {
+    if (badZoomedRects != null) { return badZoomedRects }
+    var node = removeChildrenAndAdd(measure, elt("span", "x"));
+    var normal = node.getBoundingClientRect();
+    var fromRange = range(node, 0, 1).getBoundingClientRect();
+    return badZoomedRects = Math.abs(normal.left - fromRange.left) > 1
+  }
+
+  // Known modes, by name and by MIME
+  var modes = {}, mimeModes = {};
+
+  // Extra arguments are stored as the mode's dependencies, which is
+  // used by (legacy) mechanisms like loadmode.js to automatically
+  // load a mode. (Preferred mechanism is the require/define calls.)
+  function defineMode(name, mode) {
+    if (arguments.length > 2)
+      { mode.dependencies = Array.prototype.slice.call(arguments, 2); }
+    modes[name] = mode;
+  }
+
+  function defineMIME(mime, spec) {
+    mimeModes[mime] = spec;
+  }
+
+  // Given a MIME type, a {name, ...options} config object, or a name
+  // string, return a mode config object.
+  function resolveMode(spec) {
+    if (typeof spec == "string" && mimeModes.hasOwnProperty(spec)) {
+      spec = mimeModes[spec];
+    } else if (spec && typeof spec.name == "string" && mimeModes.hasOwnProperty(spec.name)) {
+      var found = mimeModes[spec.name];
+      if (typeof found == "string") { found = {name: found}; }
+      spec = createObj(found, spec);
+      spec.name = found.name;
+    } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+xml$/.test(spec)) {
+      return resolveMode("application/xml")
+    } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+json$/.test(spec)) {
+      return resolveMode("application/json")
+    }
+    if (typeof spec == "string") { return {name: spec} }
+    else { return spec || {name: "null"} }
+  }
+
+  // Given a mode spec (anything that resolveMode accepts), find and
+  // initialize an actual mode object.
+  function getMode(options, spec) {
+    spec = resolveMode(spec);
+    var mfactory = modes[spec.name];
+    if (!mfactory) { return getMode(options, "text/plain") }
+    var modeObj = mfactory(options, spec);
+    if (modeExtensions.hasOwnProperty(spec.name)) {
+      var exts = modeExtensions[spec.name];
+      for (var prop in exts) {
+        if (!exts.hasOwnProperty(prop)) { continue }
+        if (modeObj.hasOwnProperty(prop)) { modeObj["_" + prop] = modeObj[prop]; }
+        modeObj[prop] = exts[prop];
+      }
+    }
+    modeObj.name = spec.name;
+    if (spec.helperType) { modeObj.helperType = spec.helperType; }
+    if (spec.modeProps) { for (var prop$1 in spec.modeProps)
+      { modeObj[prop$1] = spec.modeProps[prop$1]; } }
+
+    return modeObj
+  }
+
+  // This can be used to attach properties to mode objects from
+  // outside the actual mode definition.
+  var modeExtensions = {};
+  function extendMode(mode, properties) {
+    var exts = modeExtensions.hasOwnProperty(mode) ? modeExtensions[mode] : (modeExtensions[mode] = {});
+    copyObj(properties, exts);
+  }
+
+  function copyState(mode, state) {
+    if (state === true) { return state }
+    if (mode.copyState) { return mode.copyState(state) }
+    var nstate = {};
+    for (var n in state) {
+      var val = state[n];
+      if (val instanceof Array) { val = val.concat([]); }
+      nstate[n] = val;
+    }
+    return nstate
+  }
+
+  // Given a mode and a state (for that mode), find the inner mode and
+  // state at the position that the state refers to.
+  function innerMode(mode, state) {
+    var info;
+    while (mode.innerMode) {
+      info = mode.innerMode(state);
+      if (!info || info.mode == mode) { break }
+      state = info.state;
+      mode = info.mode;
+    }
+    return info || {mode: mode, state: state}
+  }
+
+  function startState(mode, a1, a2) {
+    return mode.startState ? mode.startState(a1, a2) : true
+  }
+
+  // STRING STREAM
+
+  // Fed to the mode parsers, provides helper functions to make
+  // parsers more succinct.
+
+  var StringStream = function(string, tabSize, lineOracle) {
+    this.pos = this.start = 0;
+    this.string = string;
+    this.tabSize = tabSize || 8;
+    this.lastColumnPos = this.lastColumnValue = 0;
+    this.lineStart = 0;
+    this.lineOracle = lineOracle;
+  };
+
+  StringStream.prototype.eol = function () {return this.pos >= this.string.length};
+  StringStream.prototype.sol = function () {return this.pos == this.lineStart};
+  StringStream.prototype.peek = function () {return this.string.charAt(this.pos) || undefined};
+  StringStream.prototype.next = function () {
+    if (this.pos < this.string.length)
+      { return this.string.charAt(this.pos++) }
+  };
+  StringStream.prototype.eat = function (match) {
+    var ch = this.string.charAt(this.pos);
+    var ok;
+    if (typeof match == "string") { ok = ch == match; }
+    else { ok = ch && (match.test ? match.test(ch) : match(ch)); }
+    if (ok) {++this.pos; return ch}
+  };
+  StringStream.prototype.eatWhile = function (match) {
+    var start = this.pos;
+    while (this.eat(match)){}
+    return this.pos > start
+  };
+  StringStream.prototype.eatSpace = function () {
+      var this$1 = this;
+
+    var start = this.pos;
+    while (/[\s\u00a0]/.test(this.string.charAt(this.pos))) { ++this$1.pos; }
+    return this.pos > start
+  };
+  StringStream.prototype.skipToEnd = function () {this.pos = this.string.length;};
+  StringStream.prototype.skipTo = function (ch) {
+    var found = this.string.indexOf(ch, this.pos);
+    if (found > -1) {this.pos = found; return true}
+  };
+  StringStream.prototype.backUp = function (n) {this.pos -= n;};
+  StringStream.prototype.column = function () {
+    if (this.lastColumnPos < this.start) {
+      this.lastColumnValue = countColumn(this.string, this.start, this.tabSize, this.lastColumnPos, this.lastColumnValue);
+      this.lastColumnPos = this.start;
+    }
+    return this.lastColumnValue - (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
+  };
+  StringStream.prototype.indentation = function () {
+    return countColumn(this.string, null, this.tabSize) -
+      (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
+  };
+  StringStream.prototype.match = function (pattern, consume, caseInsensitive) {
+    if (typeof pattern == "string") {
+      var cased = function (str) { return caseInsensitive ? str.toLowerCase() : str; };
+      var substr = this.string.substr(this.pos, pattern.length);
+      if (cased(substr) == cased(pattern)) {
+        if (consume !== false) { this.pos += pattern.length; }
+        return true
+      }
+    } else {
+      var match = this.string.slice(this.pos).match(pattern);
+      if (match && match.index > 0) { return null }
+      if (match && consume !== false) { this.pos += match[0].length; }
+      return match
+    }
+  };
+  StringStream.prototype.current = function (){return this.string.slice(this.start, this.pos)};
+  StringStream.prototype.hideFirstChars = function (n, inner) {
+    this.lineStart += n;
+    try { return inner() }
+    finally { this.lineStart -= n; }
+  };
+  StringStream.prototype.lookAhead = function (n) {
+    var oracle = this.lineOracle;
+    return oracle && oracle.lookAhead(n)
+  };
+  StringStream.prototype.baseToken = function () {
+    var oracle = this.lineOracle;
+    return oracle && oracle.baseToken(this.pos)
+  };
+
+  var SavedContext = function(state, lookAhead) {
+    this.state = state;
+    this.lookAhead = lookAhead;
+  };
+
+  var Context = function(doc, state, line, lookAhead) {
+    this.state = state;
+    this.doc = doc;
+    this.line = line;
+    this.maxLookAhead = lookAhead || 0;
+    this.baseTokens = null;
+    this.baseTokenPos = 1;
+  };
+
+  Context.prototype.lookAhead = function (n) {
+    var line = this.doc.getLine(this.line + n);
+    if (line != null && n > this.maxLookAhead) { this.maxLookAhead = n; }
+    return line
+  };
+
+  Context.prototype.baseToken = function (n) {
+      var this$1 = this;
+
+    if (!this.baseTokens) { return null }
+    while (this.baseTokens[this.baseTokenPos] <= n)
+      { this$1.baseTokenPos += 2; }
+    var type = this.baseTokens[this.baseTokenPos + 1];
+    return {type: type && type.replace(/( |^)overlay .*/, ""),
+            size: this.baseTokens[this.baseTokenPos] - n}
+  };
+
+  Context.prototype.nextLine = function () {
+    this.line++;
+    if (this.maxLookAhead > 0) { this.maxLookAhead--; }
+  };
+
+  Context.fromSaved = function (doc, saved, line) {
+    if (saved instanceof SavedContext)
+      { return new Context(doc, copyState(doc.mode, saved.state), line, saved.lookAhead) }
+    else
+      { return new Context(doc, copyState(doc.mode, saved), line) }
+  };
+
+  Context.prototype.save = function (copy) {
+    var state = copy !== false ? copyState(this.doc.mode, this.state) : this.state;
+    return this.maxLookAhead > 0 ? new SavedContext(state, this.maxLookAhead) : state
+  };
+
+
+  // Compute a style array (an array starting with a mode generation
+  // -- for invalidation -- followed by pairs of end positions and
+  // style strings), which is used to highlight the tokens on the
+  // line.
+  function highlightLine(cm, line, context, forceToEnd) {
+    // A styles array always starts with a number identifying the
+    // mode/overlays that it is based on (for easy invalidation).
+    var st = [cm.state.modeGen], lineClasses = {};
+    // Compute the base array of styles
+    runMode(cm, line.text, cm.doc.mode, context, function (end, style) { return st.push(end, style); },
+            lineClasses, forceToEnd);
+    var state = context.state;
+
+    // Run overlays, adjust style array.
+    var loop = function ( o ) {
+      context.baseTokens = st;
+      var overlay = cm.state.overlays[o], i = 1, at = 0;
+      context.state = true;
+      runMode(cm, line.text, overlay.mode, context, function (end, style) {
+        var start = i;
+        // Ensure there's a token end at the current position, and that i points at it
+        while (at < end) {
+          var i_end = st[i];
+          if (i_end > end)
+            { st.splice(i, 1, end, st[i+1], i_end); }
+          i += 2;
+          at = Math.min(end, i_end);
+        }
+        if (!style) { return }
+        if (overlay.opaque) {
+          st.splice(start, i - start, end, "overlay " + style);
+          i = start + 2;
+        } else {
+          for (; start < i; start += 2) {
+            var cur = st[start+1];
+            st[start+1] = (cur ? cur + " " : "") + "overlay " + style;
+          }
+        }
+      }, lineClasses);
+      context.state = state;
+      context.baseTokens = null;
+      context.baseTokenPos = 1;
+    };
+
+    for (var o = 0; o < cm.state.overlays.length; ++o) loop( o );
+
+    return {styles: st, classes: lineClasses.bgClass || lineClasses.textClass ? lineClasses : null}
+  }
+
+  function getLineStyles(cm, line, updateFrontier) {
+    if (!line.styles || line.styles[0] != cm.state.modeGen) {
+      var context = getContextBefore(cm, lineNo(line));
+      var resetState = line.text.length > cm.options.maxHighlightLength && copyState(cm.doc.mode, context.state);
+      var result = highlightLine(cm, line, context);
+      if (resetState) { context.state = resetState; }
+      line.stateAfter = context.save(!resetState);
+      line.styles = result.styles;
+      if (result.classes) { line.styleClasses = result.classes; }
+      else if (line.styleClasses) { line.styleClasses = null; }
+      if (updateFrontier === cm.doc.highlightFrontier)
+        { cm.doc.modeFrontier = Math.max(cm.doc.modeFrontier, ++cm.doc.highlightFrontier); }
+    }
+    return line.styles
+  }
+
+  function getContextBefore(cm, n, precise) {
+    var doc = cm.doc, display = cm.display;
+    if (!doc.mode.startState) { return new Context(doc, true, n) }
+    var start = findStartLine(cm, n, precise);
+    var saved = start > doc.first && getLine(doc, start - 1).stateAfter;
+    var context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, startState(doc.mode), start);
+
+    doc.iter(start, n, function (line) {
+      processLine(cm, line.text, context);
+      var pos = context.line;
+      line.stateAfter = pos == n - 1 || pos % 5 == 0 || pos >= display.viewFrom && pos < display.viewTo ? context.save() : null;
+      context.nextLine();
+    });
+    if (precise) { doc.modeFrontier = context.line; }
+    return context
+  }
+
+  // Lightweight form of highlight -- proceed over this line and
+  // update state, but don't save a style array. Used for lines that
+  // aren't currently visible.
+  function processLine(cm, text, context, startAt) {
+    var mode = cm.doc.mode;
+    var stream = new StringStream(text, cm.options.tabSize, context);
+    stream.start = stream.pos = startAt || 0;
+    if (text == "") { callBlankLine(mode, context.state); }
+    while (!stream.eol()) {
+      readToken(mode, stream, context.state);
+      stream.start = stream.pos;
+    }
+  }
+
+  function callBlankLine(mode, state) {
+    if (mode.blankLine) { return mode.blankLine(state) }
+    if (!mode.innerMode) { return }
+    var inner = innerMode(mode, state);
+    if (inner.mode.blankLine) { return inner.mode.blankLine(inner.state) }
+  }
+
+  function readToken(mode, stream, state, inner) {
+    for (var i = 0; i < 10; i++) {
+      if (inner) { inner[0] = innerMode(mode, state).mode; }
+      var style = mode.token(stream, state);
+      if (stream.pos > stream.start) { return style }
+    }
+    throw new Error("Mode " + mode.name + " failed to advance stream.")
+  }
+
+  var Token = function(stream, type, state) {
+    this.start = stream.start; this.end = stream.pos;
+    this.string = stream.current();
+    this.type = type || null;
+    this.state = state;
+  };
+
+  // Utility for getTokenAt and getLineTokens
+  function takeToken(cm, pos, precise, asArray) {
+    var doc = cm.doc, mode = doc.mode, style;
+    pos = clipPos(doc, pos);
+    var line = getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
+    var stream = new StringStream(line.text, cm.options.tabSize, context), tokens;
+    if (asArray) { tokens = []; }
+    while ((asArray || stream.pos < pos.ch) && !stream.eol()) {
+      stream.start = stream.pos;
+      style = readToken(mode, stream, context.state);
+      if (asArray) { tokens.push(new Token(stream, style, copyState(doc.mode, context.state))); }
+    }
+    return asArray ? tokens : new Token(stream, style, context.state)
+  }
+
+  function extractLineClasses(type, output) {
+    if (type) { for (;;) {
+      var lineClass = type.match(/(?:^|\s+)line-(background-)?(\S+)/);
+      if (!lineClass) { break }
+      type = type.slice(0, lineClass.index) + type.slice(lineClass.index + lineClass[0].length);
+      var prop = lineClass[1] ? "bgClass" : "textClass";
+      if (output[prop] == null)
+        { output[prop] = lineClass[2]; }
+      else if (!(new RegExp("(?:^|\s)" + lineClass[2] + "(?:$|\s)")).test(output[prop]))
+        { output[prop] += " " + lineClass[2]; }
+    } }
+    return type
+  }
+
+  // Run the given mode's parser over a line, calling f for each token.
+  function runMode(cm, text, mode, context, f, lineClasses, forceToEnd) {
+    var flattenSpans = mode.flattenSpans;
+    if (flattenSpans == null) { flattenSpans = cm.options.flattenSpans; }
+    var curStart = 0, curStyle = null;
+    var stream = new StringStream(text, cm.options.tabSize, context), style;
+    var inner = cm.options.addModeClass && [null];
+    if (text == "") { extractLineClasses(callBlankLine(mode, context.state), lineClasses); }
+    while (!stream.eol()) {
+      if (stream.pos > cm.options.maxHighlightLength) {
+        flattenSpans = false;
+        if (forceToEnd) { processLine(cm, text, context, stream.pos); }
+        stream.pos = text.length;
+        style = null;
+      } else {
+        style = extractLineClasses(readToken(mode, stream, context.state, inner), lineClasses);
+      }
+      if (inner) {
+        var mName = inner[0].name;
+        if (mName) { style = "m-" + (style ? mName + " " + style : mName); }
+      }
+      if (!flattenSpans || curStyle != style) {
+        while (curStart < stream.start) {
+          curStart = Math.min(stream.start, curStart + 5000);
+          f(curStart, curStyle);
+        }
+        curStyle = style;
+      }
+      stream.start = stream.pos;
+    }
+    while (curStart < stream.pos) {
+      // Webkit seems to refuse to render text nodes longer than 57444
+      // characters, and returns inaccurate measurements in nodes
+      // starting around 5000 chars.
+      var pos = Math.min(stream.pos, curStart + 5000);
+      f(pos, curStyle);
+      curStart = pos;
+    }
+  }
+
+  // Finds the line to start with when starting a parse. Tries to
+  // find a line with a stateAfter, so that it can start with a
+  // valid state. If that fails, it returns the line with the
+  // smallest indentation, which tends to need the least context to
+  // parse correctly.
+  function findStartLine(cm, n, precise) {
+    var minindent, minline, doc = cm.doc;
+    var lim = precise ? -1 : n - (cm.doc.mode.innerMode ? 1000 : 100);
+    for (var search = n; search > lim; --search) {
+      if (search <= doc.first) { return doc.first }
+      var line = getLine(doc, search - 1), after = line.stateAfter;
+      if (after && (!precise || search + (after instanceof SavedContext ? after.lookAhead : 0) <= doc.modeFrontier))
+        { return search }
+      var indented = countColumn(line.text, null, cm.options.tabSize);
+      if (minline == null || minindent > indented) {
+        minline = search - 1;
+        minindent = indented;
+      }
+    }
+    return minline
+  }
+
+  function retreatFrontier(doc, n) {
+    doc.modeFrontier = Math.min(doc.modeFrontier, n);
+    if (doc.highlightFrontier < n - 10) { return }
+    var start = doc.first;
+    for (var line = n - 1; line > start; line--) {
+      var saved = getLine(doc, line).stateAfter;
+      // change is on 3
+      // state on line 1 looked ahead 2 -- so saw 3
+      // test 1 + 2 < 3 should cover this
+      if (saved && (!(saved instanceof SavedContext) || line + saved.lookAhead < n)) {
+        start = line + 1;
+        break
+      }
+    }
+    doc.highlightFrontier = Math.min(doc.highlightFrontier, start);
   }
 
   // LINE DATA STRUCTURE
@@ -9116,8 +8991,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
           elt("div", lineNumberFor(cm.options, lineN),
               "CodeMirror-linenumber CodeMirror-gutter-elt",
               ("left: " + (dims.gutterLeft["CodeMirror-linenumbers"]) + "px; width: " + (cm.display.lineNumInnerWidth) + "px"))); }
-      if (markers) { for (var k = 0; k < cm.display.gutterSpecs.length; ++k) {
-        var id = cm.display.gutterSpecs[k].className, found = markers.hasOwnProperty(id) && markers[id];
+      if (markers) { for (var k = 0; k < cm.options.gutters.length; ++k) {
+        var id = cm.options.gutters[k], found = markers.hasOwnProperty(id) && markers[id];
         if (found)
           { gutterWrap.appendChild(elt("div", [found], "CodeMirror-gutter-elt",
                                      ("left: " + (dims.gutterLeft[id]) + "px; width: " + (dims.gutterWidth[id]) + "px"))); }
@@ -9127,10 +9002,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   function updateLineWidgets(cm, lineView, dims) {
     if (lineView.alignable) { lineView.alignable = null; }
-    var isWidget = classTest("CodeMirror-linewidget");
     for (var node = lineView.node.firstChild, next = (void 0); node; node = next) {
       next = node.nextSibling;
-      if (isWidget.test(node.className)) { lineView.node.removeChild(node); }
+      if (node.className == "CodeMirror-linewidget")
+        { lineView.node.removeChild(node); }
     }
     insertLineWidgets(cm, lineView, dims);
   }
@@ -9160,7 +9035,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     if (!line.widgets) { return }
     var wrap = ensureLineWrapped(lineView);
     for (var i = 0, ws = line.widgets; i < ws.length; ++i) {
-      var widget = ws[i], node = elt("div", [widget.node], "CodeMirror-linewidget" + (widget.className ? " " + widget.className : ""));
+      var widget = ws[i], node = elt("div", [widget.node], "CodeMirror-linewidget");
       if (!widget.handleMouseEvents) { node.setAttribute("cm-ignore-events", "true"); }
       positionLineWidget(widget, node, lineView, dims);
       cm.display.input.setUneditable(node);
@@ -9220,7 +9095,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function paddingVert(display) {return display.mover.offsetHeight - display.lineSpace.offsetHeight}
   function paddingH(display) {
     if (display.cachedPaddingH) { return display.cachedPaddingH }
-    var e = removeChildrenAndAdd(display.measure, elt("pre", "x", "CodeMirror-line-like"));
+    var e = removeChildrenAndAdd(display.measure, elt("pre", "x"));
     var style = window.getComputedStyle ? window.getComputedStyle(e) : e.currentStyle;
     var data = {left: parseInt(style.paddingLeft), right: parseInt(style.paddingRight)};
     if (!isNaN(data.left) && !isNaN(data.right)) { display.cachedPaddingH = data; }
@@ -9348,36 +9223,36 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   var nullRect = {left: 0, right: 0, top: 0, bottom: 0};
 
-  function nodeAndOffsetInLineMap(map, ch, bias) {
+  function nodeAndOffsetInLineMap(map$$1, ch, bias) {
     var node, start, end, collapse, mStart, mEnd;
     // First, search the line map for the text node corresponding to,
     // or closest to, the target character.
-    for (var i = 0; i < map.length; i += 3) {
-      mStart = map[i];
-      mEnd = map[i + 1];
+    for (var i = 0; i < map$$1.length; i += 3) {
+      mStart = map$$1[i];
+      mEnd = map$$1[i + 1];
       if (ch < mStart) {
         start = 0; end = 1;
         collapse = "left";
       } else if (ch < mEnd) {
         start = ch - mStart;
         end = start + 1;
-      } else if (i == map.length - 3 || ch == mEnd && map[i + 3] > ch) {
+      } else if (i == map$$1.length - 3 || ch == mEnd && map$$1[i + 3] > ch) {
         end = mEnd - mStart;
         start = end - 1;
         if (ch >= mEnd) { collapse = "right"; }
       }
       if (start != null) {
-        node = map[i + 2];
+        node = map$$1[i + 2];
         if (mStart == mEnd && bias == (node.insertLeft ? "left" : "right"))
           { collapse = bias; }
         if (bias == "left" && start == 0)
-          { while (i && map[i - 2] == map[i - 3] && map[i - 1].insertLeft) {
-            node = map[(i -= 3) + 2];
+          { while (i && map$$1[i - 2] == map$$1[i - 3] && map$$1[i - 1].insertLeft) {
+            node = map$$1[(i -= 3) + 2];
             collapse = "left";
           } }
         if (bias == "right" && start == mEnd - mStart)
-          { while (i < map.length - 3 && map[i + 3] == map[i + 4] && !map[i + 5].insertLeft) {
-            node = map[(i += 3) + 2];
+          { while (i < map$$1.length - 3 && map$$1[i + 3] == map$$1[i + 4] && !map$$1[i + 5].insertLeft) {
+            node = map$$1[(i += 3) + 2];
             collapse = "right";
           } }
         break
@@ -9614,7 +9489,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function PosWithInfo(line, ch, sticky, outside, xRel) {
     var pos = Pos(line, ch, sticky);
     pos.xRel = xRel;
-    if (outside) { pos.outside = outside; }
+    if (outside) { pos.outside = true; }
     return pos
   }
 
@@ -9623,16 +9498,16 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function coordsChar(cm, x, y) {
     var doc = cm.doc;
     y += cm.display.viewOffset;
-    if (y < 0) { return PosWithInfo(doc.first, 0, null, -1, -1) }
+    if (y < 0) { return PosWithInfo(doc.first, 0, null, true, -1) }
     var lineN = lineAtHeight(doc, y), last = doc.first + doc.size - 1;
     if (lineN > last)
-      { return PosWithInfo(doc.first + doc.size - 1, getLine(doc, last).text.length, null, 1, 1) }
+      { return PosWithInfo(doc.first + doc.size - 1, getLine(doc, last).text.length, null, true, 1) }
     if (x < 0) { x = 0; }
 
     var lineObj = getLine(doc, lineN);
     for (;;) {
       var found = coordsCharInner(cm, lineObj, lineN, x, y);
-      var collapsed = collapsedSpanAround(lineObj, found.ch + (found.xRel > 0 || found.outside > 0 ? 1 : 0));
+      var collapsed = collapsedSpanAround(lineObj, found.ch + (found.xRel > 0 ? 1 : 0));
       if (!collapsed) { return found }
       var rangeEnd = collapsed.find(1);
       if (rangeEnd.line == lineN) { return rangeEnd }
@@ -9660,13 +9535,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     return box.bottom <= y ? false : box.top > y ? true : (left ? box.left : box.right) > x
   }
 
-  function coordsCharInner(cm, lineObj, lineNo, x, y) {
+  function coordsCharInner(cm, lineObj, lineNo$$1, x, y) {
     // Move y into line-local coordinate space
     y -= heightAtLine(lineObj);
     var preparedMeasure = prepareMeasureForLine(cm, lineObj);
     // When directly calling `measureCharPrepared`, we have to adjust
     // for the widgets at this line.
-    var widgetHeight = widgetTopHeight(lineObj);
+    var widgetHeight$$1 = widgetTopHeight(lineObj);
     var begin = 0, end = lineObj.text.length, ltr = true;
 
     var order = getOrder(lineObj, cm.doc.direction);
@@ -9674,7 +9549,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // which bidi section the coordinates fall into.
     if (order) {
       var part = (cm.options.lineWrapping ? coordsBidiPartWrapped : coordsBidiPart)
-                   (cm, lineObj, lineNo, preparedMeasure, order, x, y);
+                   (cm, lineObj, lineNo$$1, preparedMeasure, order, x, y);
       ltr = part.level != 1;
       // The awkward -1 offsets are needed because findFirst (called
       // on these below) will treat its first bound as inclusive,
@@ -9690,7 +9565,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var chAround = null, boxAround = null;
     var ch = findFirst(function (ch) {
       var box = measureCharPrepared(cm, preparedMeasure, ch);
-      box.top += widgetHeight; box.bottom += widgetHeight;
+      box.top += widgetHeight$$1; box.bottom += widgetHeight$$1;
       if (!boxIsAfter(box, x, y, false)) { return false }
       if (box.top <= y && box.left <= x) {
         chAround = ch;
@@ -9714,27 +9589,27 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       // left of the character and compare it's vertical position to the
       // coordinates
       sticky = ch == 0 ? "after" : ch == lineObj.text.length ? "before" :
-        (measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + widgetHeight <= y) == ltr ?
+        (measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + widgetHeight$$1 <= y) == ltr ?
         "after" : "before";
       // Now get accurate coordinates for this place, in order to get a
       // base X position
-      var coords = cursorCoords(cm, Pos(lineNo, ch, sticky), "line", lineObj, preparedMeasure);
+      var coords = cursorCoords(cm, Pos(lineNo$$1, ch, sticky), "line", lineObj, preparedMeasure);
       baseX = coords.left;
-      outside = y < coords.top ? -1 : y >= coords.bottom ? 1 : 0;
+      outside = y < coords.top || y >= coords.bottom;
     }
 
     ch = skipExtendingChars(lineObj.text, ch, 1);
-    return PosWithInfo(lineNo, ch, sticky, outside, x - baseX)
+    return PosWithInfo(lineNo$$1, ch, sticky, outside, x - baseX)
   }
 
-  function coordsBidiPart(cm, lineObj, lineNo, preparedMeasure, order, x, y) {
+  function coordsBidiPart(cm, lineObj, lineNo$$1, preparedMeasure, order, x, y) {
     // Bidi parts are sorted left-to-right, and in a non-line-wrapping
     // situation, we can take this ordering to correspond to the visual
     // ordering. This finds the first part whose end is after the given
     // coordinates.
     var index = findFirst(function (i) {
       var part = order[i], ltr = part.level != 1;
-      return boxIsAfter(cursorCoords(cm, Pos(lineNo, ltr ? part.to : part.from, ltr ? "before" : "after"),
+      return boxIsAfter(cursorCoords(cm, Pos(lineNo$$1, ltr ? part.to : part.from, ltr ? "before" : "after"),
                                      "line", lineObj, preparedMeasure), x, y, true)
     }, 0, order.length - 1);
     var part = order[index];
@@ -9743,7 +9618,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // that start, move one part back.
     if (index > 0) {
       var ltr = part.level != 1;
-      var start = cursorCoords(cm, Pos(lineNo, ltr ? part.from : part.to, ltr ? "after" : "before"),
+      var start = cursorCoords(cm, Pos(lineNo$$1, ltr ? part.from : part.to, ltr ? "after" : "before"),
                                "line", lineObj, preparedMeasure);
       if (boxIsAfter(start, x, y, true) && start.top > y)
         { part = order[index - 1]; }
@@ -9789,7 +9664,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function textHeight(display) {
     if (display.cachedTextHeight != null) { return display.cachedTextHeight }
     if (measureText == null) {
-      measureText = elt("pre", null, "CodeMirror-line-like");
+      measureText = elt("pre");
       // Measure a bunch of lines, for browsers that compute
       // fractional heights.
       for (var i = 0; i < 49; ++i) {
@@ -9809,7 +9684,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function charWidth(display) {
     if (display.cachedCharWidth != null) { return display.cachedCharWidth }
     var anchor = elt("span", "xxxxxxxxxx");
-    var pre = elt("pre", [anchor], "CodeMirror-line-like");
+    var pre = elt("pre", [anchor]);
     removeChildrenAndAdd(display.measure, pre);
     var rect = anchor.getBoundingClientRect(), width = (rect.right - rect.left) / 10;
     if (width > 2) { display.cachedCharWidth = width; }
@@ -9822,9 +9697,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var d = cm.display, left = {}, width = {};
     var gutterLeft = d.gutters.clientLeft;
     for (var n = d.gutters.firstChild, i = 0; n; n = n.nextSibling, ++i) {
-      var id = cm.display.gutterSpecs[i].className;
-      left[id] = n.offsetLeft + n.clientLeft + gutterLeft;
-      width[id] = n.clientWidth;
+      left[cm.options.gutters[i]] = n.offsetLeft + n.clientLeft + gutterLeft;
+      width[cm.options.gutters[i]] = n.clientWidth;
     }
     return {fixedPos: compensateForHScroll(d),
             gutterTotalWidth: d.gutters.offsetWidth,
@@ -9881,9 +9755,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var x, y, space = display.lineSpace.getBoundingClientRect();
     // Fails unpredictably on IE[67] when mouse is dragged around quickly.
     try { x = e.clientX - space.left; y = e.clientY - space.top; }
-    catch (e$1) { return null }
+    catch (e) { return null }
     var coords = coordsChar(cm, x, y), line;
-    if (forRect && coords.xRel > 0 && (line = getLine(cm.doc, coords.line).text).length == coords.ch) {
+    if (forRect && coords.xRel == 1 && (line = getLine(cm.doc, coords.line).text).length == coords.ch) {
       var colDiff = countColumn(line, line.length, cm.options.tabSize) - line.length;
       coords = Pos(coords.line, Math.max(0, Math.round((x - paddingH(cm.display).left) / charWidth(cm.display)) - colDiff));
     }
@@ -9903,154 +9777,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }
   }
 
-  // Updates the display.view data structure for a given change to the
-  // document. From and to are in pre-change coordinates. Lendiff is
-  // the amount of lines added or subtracted by the change. This is
-  // used for changes that span multiple lines, or change the way
-  // lines are divided into visual lines. regLineChange (below)
-  // registers single-line changes.
-  function regChange(cm, from, to, lendiff) {
-    if (from == null) { from = cm.doc.first; }
-    if (to == null) { to = cm.doc.first + cm.doc.size; }
-    if (!lendiff) { lendiff = 0; }
-
-    var display = cm.display;
-    if (lendiff && to < display.viewTo &&
-        (display.updateLineNumbers == null || display.updateLineNumbers > from))
-      { display.updateLineNumbers = from; }
-
-    cm.curOp.viewChanged = true;
-
-    if (from >= display.viewTo) { // Change after
-      if (sawCollapsedSpans && visualLineNo(cm.doc, from) < display.viewTo)
-        { resetView(cm); }
-    } else if (to <= display.viewFrom) { // Change before
-      if (sawCollapsedSpans && visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
-        resetView(cm);
-      } else {
-        display.viewFrom += lendiff;
-        display.viewTo += lendiff;
-      }
-    } else if (from <= display.viewFrom && to >= display.viewTo) { // Full overlap
-      resetView(cm);
-    } else if (from <= display.viewFrom) { // Top overlap
-      var cut = viewCuttingPoint(cm, to, to + lendiff, 1);
-      if (cut) {
-        display.view = display.view.slice(cut.index);
-        display.viewFrom = cut.lineN;
-        display.viewTo += lendiff;
-      } else {
-        resetView(cm);
-      }
-    } else if (to >= display.viewTo) { // Bottom overlap
-      var cut$1 = viewCuttingPoint(cm, from, from, -1);
-      if (cut$1) {
-        display.view = display.view.slice(0, cut$1.index);
-        display.viewTo = cut$1.lineN;
-      } else {
-        resetView(cm);
-      }
-    } else { // Gap in the middle
-      var cutTop = viewCuttingPoint(cm, from, from, -1);
-      var cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
-      if (cutTop && cutBot) {
-        display.view = display.view.slice(0, cutTop.index)
-          .concat(buildViewArray(cm, cutTop.lineN, cutBot.lineN))
-          .concat(display.view.slice(cutBot.index));
-        display.viewTo += lendiff;
-      } else {
-        resetView(cm);
-      }
-    }
-
-    var ext = display.externalMeasured;
-    if (ext) {
-      if (to < ext.lineN)
-        { ext.lineN += lendiff; }
-      else if (from < ext.lineN + ext.size)
-        { display.externalMeasured = null; }
-    }
-  }
-
-  // Register a change to a single line. Type must be one of "text",
-  // "gutter", "class", "widget"
-  function regLineChange(cm, line, type) {
-    cm.curOp.viewChanged = true;
-    var display = cm.display, ext = cm.display.externalMeasured;
-    if (ext && line >= ext.lineN && line < ext.lineN + ext.size)
-      { display.externalMeasured = null; }
-
-    if (line < display.viewFrom || line >= display.viewTo) { return }
-    var lineView = display.view[findViewIndex(cm, line)];
-    if (lineView.node == null) { return }
-    var arr = lineView.changes || (lineView.changes = []);
-    if (indexOf(arr, type) == -1) { arr.push(type); }
-  }
-
-  // Clear the view.
-  function resetView(cm) {
-    cm.display.viewFrom = cm.display.viewTo = cm.doc.first;
-    cm.display.view = [];
-    cm.display.viewOffset = 0;
-  }
-
-  function viewCuttingPoint(cm, oldN, newN, dir) {
-    var index = findViewIndex(cm, oldN), diff, view = cm.display.view;
-    if (!sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
-      { return {index: index, lineN: newN} }
-    var n = cm.display.viewFrom;
-    for (var i = 0; i < index; i++)
-      { n += view[i].size; }
-    if (n != oldN) {
-      if (dir > 0) {
-        if (index == view.length - 1) { return null }
-        diff = (n + view[index].size) - oldN;
-        index++;
-      } else {
-        diff = n - oldN;
-      }
-      oldN += diff; newN += diff;
-    }
-    while (visualLineNo(cm.doc, newN) != newN) {
-      if (index == (dir < 0 ? 0 : view.length - 1)) { return null }
-      newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
-      index += dir;
-    }
-    return {index: index, lineN: newN}
-  }
-
-  // Force the view to cover a given range, adding empty view element
-  // or clipping off existing ones as needed.
-  function adjustView(cm, from, to) {
-    var display = cm.display, view = display.view;
-    if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
-      display.view = buildViewArray(cm, from, to);
-      display.viewFrom = from;
-    } else {
-      if (display.viewFrom > from)
-        { display.view = buildViewArray(cm, from, display.viewFrom).concat(display.view); }
-      else if (display.viewFrom < from)
-        { display.view = display.view.slice(findViewIndex(cm, from)); }
-      display.viewFrom = from;
-      if (display.viewTo < to)
-        { display.view = display.view.concat(buildViewArray(cm, display.viewTo, to)); }
-      else if (display.viewTo > to)
-        { display.view = display.view.slice(0, findViewIndex(cm, to)); }
-    }
-    display.viewTo = to;
-  }
-
-  // Count the number of lines in the view whose DOM representation is
-  // out of date (or nonexistent).
-  function countDirtyView(cm) {
-    var view = cm.display.view, dirty = 0;
-    for (var i = 0; i < view.length; i++) {
-      var lineView = view[i];
-      if (!lineView.hidden && (!lineView.node || lineView.changes)) { ++dirty; }
-    }
-    return dirty
-  }
-
   function updateSelection(cm) {
     cm.display.input.showSelection(cm.display.input.prepareSelection());
   }
@@ -10064,13 +9790,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
     for (var i = 0; i < doc.sel.ranges.length; i++) {
       if (!primary && i == doc.sel.primIndex) { continue }
-      var range = doc.sel.ranges[i];
-      if (range.from().line >= cm.display.viewTo || range.to().line < cm.display.viewFrom) { continue }
-      var collapsed = range.empty();
+      var range$$1 = doc.sel.ranges[i];
+      if (range$$1.from().line >= cm.display.viewTo || range$$1.to().line < cm.display.viewFrom) { continue }
+      var collapsed = range$$1.empty();
       if (collapsed || cm.options.showCursorWhenSelecting)
-        { drawSelectionCursor(cm, range.head, curFragment); }
+        { drawSelectionCursor(cm, range$$1.head, curFragment); }
       if (!collapsed)
-        { drawSelectionRange(cm, range, selFragment); }
+        { drawSelectionRange(cm, range$$1, selFragment); }
     }
     return result
   }
@@ -10097,7 +9823,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function cmpCoords(a, b) { return a.top - b.top || a.left - b.left }
 
   // Draws the given range as a highlighted selection
-  function drawSelectionRange(cm, range, output) {
+  function drawSelectionRange(cm, range$$1, output) {
     var display = cm.display, doc = cm.doc;
     var fragment = document.createDocumentFragment();
     var padding = paddingH(cm.display), leftSide = padding.left;
@@ -10166,7 +9892,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       return {start: start, end: end}
     }
 
-    var sFrom = range.from(), sTo = range.to();
+    var sFrom = range$$1.from(), sTo = range$$1.to();
     if (sFrom.line == sTo.line) {
       drawForLine(sFrom.line, sFrom.ch, sTo.ch);
     } else {
@@ -10318,6 +10044,49 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     return {from: from, to: Math.max(to, from + 1)}
   }
 
+  // Re-align line numbers and gutter marks to compensate for
+  // horizontal scrolling.
+  function alignHorizontally(cm) {
+    var display = cm.display, view = display.view;
+    if (!display.alignWidgets && (!display.gutters.firstChild || !cm.options.fixedGutter)) { return }
+    var comp = compensateForHScroll(display) - display.scroller.scrollLeft + cm.doc.scrollLeft;
+    var gutterW = display.gutters.offsetWidth, left = comp + "px";
+    for (var i = 0; i < view.length; i++) { if (!view[i].hidden) {
+      if (cm.options.fixedGutter) {
+        if (view[i].gutter)
+          { view[i].gutter.style.left = left; }
+        if (view[i].gutterBackground)
+          { view[i].gutterBackground.style.left = left; }
+      }
+      var align = view[i].alignable;
+      if (align) { for (var j = 0; j < align.length; j++)
+        { align[j].style.left = left; } }
+    } }
+    if (cm.options.fixedGutter)
+      { display.gutters.style.left = (comp + gutterW) + "px"; }
+  }
+
+  // Used to ensure that the line number gutter is still the right
+  // size for the current document size. Returns true when an update
+  // is needed.
+  function maybeUpdateLineNumberWidth(cm) {
+    if (!cm.options.lineNumbers) { return false }
+    var doc = cm.doc, last = lineNumberFor(cm.options, doc.first + doc.size - 1), display = cm.display;
+    if (last.length != display.lineNumChars) {
+      var test = display.measure.appendChild(elt("div", [elt("div", last)],
+                                                 "CodeMirror-linenumber CodeMirror-gutter-elt"));
+      var innerW = test.firstChild.offsetWidth, padding = test.offsetWidth - innerW;
+      display.lineGutter.style.width = "";
+      display.lineNumInnerWidth = Math.max(innerW, display.lineGutter.offsetWidth - padding) + 1;
+      display.lineNumWidth = display.lineNumInnerWidth + padding;
+      display.lineNumChars = display.lineNumInnerWidth ? last.length : -1;
+      display.lineGutter.style.width = display.lineNumWidth + "px";
+      updateGutterSpace(cm);
+      return true
+    }
+    return false
+  }
+
   // SCROLLING THINGS INTO VIEW
 
   // If an editor sits on the top or bottom of the window, partially
@@ -10433,9 +10202,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     if (y != null) { cm.curOp.scrollTop = y; }
   }
 
-  function scrollToRange(cm, range) {
+  function scrollToRange(cm, range$$1) {
     resolveScrollToPos(cm);
-    cm.curOp.scrollToPos = range;
+    cm.curOp.scrollToPos = range$$1;
   }
 
   // When an operation has its scrollToPos property set, and another
@@ -10443,11 +10212,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // 'simulates' scrolling that position into view in a cheap way, so
   // that the effect of intermediate scroll commands is not ignored.
   function resolveScrollToPos(cm) {
-    var range = cm.curOp.scrollToPos;
-    if (range) {
+    var range$$1 = cm.curOp.scrollToPos;
+    if (range$$1) {
       cm.curOp.scrollToPos = null;
-      var from = estimateCoords(cm, range.from), to = estimateCoords(cm, range.to);
-      scrollToCoordsRange(cm, from, to, range.margin);
+      var from = estimateCoords(cm, range$$1.from), to = estimateCoords(cm, range$$1.to);
+      scrollToCoordsRange(cm, from, to, range$$1.margin);
     }
   }
 
@@ -10472,7 +10241,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   }
 
   function setScrollTop(cm, val, forceScroll) {
-    val = Math.max(0, Math.min(cm.display.scroller.scrollHeight - cm.display.scroller.clientHeight, val));
+    val = Math.min(cm.display.scroller.scrollHeight - cm.display.scroller.clientHeight, val);
     if (cm.display.scroller.scrollTop == val && !forceScroll) { return }
     cm.doc.scrollTop = val;
     cm.display.scrollbars.setScrollTop(val);
@@ -10482,7 +10251,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // Sync scroller and scrollbar, ensure the gutter elements are
   // aligned.
   function setScrollLeft(cm, val, isScroller, forceScroll) {
-    val = Math.max(0, Math.min(val, cm.display.scroller.scrollWidth - cm.display.scroller.clientWidth));
+    val = Math.min(val, cm.display.scroller.scrollWidth - cm.display.scroller.clientWidth);
     if ((isScroller ? val == cm.doc.scrollLeft : Math.abs(cm.doc.scrollLeft - val) < 2) && !forceScroll) { return }
     cm.doc.scrollLeft = val;
     alignHorizontally(cm);
@@ -10594,9 +10363,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       // (when the bar is hidden). If it is still visible, we keep
       // it enabled, if it's hidden, we disable pointer events.
       var box = bar.getBoundingClientRect();
-      var elt = type == "vert" ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2)
+      var elt$$1 = type == "vert" ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2)
           : document.elementFromPoint((box.right + box.left) / 2, box.bottom - 1);
-      if (elt != bar) { bar.style.pointerEvents = "none"; }
+      if (elt$$1 != bar) { bar.style.pointerEvents = "none"; }
       else { delay.set(1000, maybeDisable); }
     }
     delay.set(1000, maybeDisable);
@@ -10865,6 +10634,154 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }
   }
 
+  // Updates the display.view data structure for a given change to the
+  // document. From and to are in pre-change coordinates. Lendiff is
+  // the amount of lines added or subtracted by the change. This is
+  // used for changes that span multiple lines, or change the way
+  // lines are divided into visual lines. regLineChange (below)
+  // registers single-line changes.
+  function regChange(cm, from, to, lendiff) {
+    if (from == null) { from = cm.doc.first; }
+    if (to == null) { to = cm.doc.first + cm.doc.size; }
+    if (!lendiff) { lendiff = 0; }
+
+    var display = cm.display;
+    if (lendiff && to < display.viewTo &&
+        (display.updateLineNumbers == null || display.updateLineNumbers > from))
+      { display.updateLineNumbers = from; }
+
+    cm.curOp.viewChanged = true;
+
+    if (from >= display.viewTo) { // Change after
+      if (sawCollapsedSpans && visualLineNo(cm.doc, from) < display.viewTo)
+        { resetView(cm); }
+    } else if (to <= display.viewFrom) { // Change before
+      if (sawCollapsedSpans && visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
+        resetView(cm);
+      } else {
+        display.viewFrom += lendiff;
+        display.viewTo += lendiff;
+      }
+    } else if (from <= display.viewFrom && to >= display.viewTo) { // Full overlap
+      resetView(cm);
+    } else if (from <= display.viewFrom) { // Top overlap
+      var cut = viewCuttingPoint(cm, to, to + lendiff, 1);
+      if (cut) {
+        display.view = display.view.slice(cut.index);
+        display.viewFrom = cut.lineN;
+        display.viewTo += lendiff;
+      } else {
+        resetView(cm);
+      }
+    } else if (to >= display.viewTo) { // Bottom overlap
+      var cut$1 = viewCuttingPoint(cm, from, from, -1);
+      if (cut$1) {
+        display.view = display.view.slice(0, cut$1.index);
+        display.viewTo = cut$1.lineN;
+      } else {
+        resetView(cm);
+      }
+    } else { // Gap in the middle
+      var cutTop = viewCuttingPoint(cm, from, from, -1);
+      var cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
+      if (cutTop && cutBot) {
+        display.view = display.view.slice(0, cutTop.index)
+          .concat(buildViewArray(cm, cutTop.lineN, cutBot.lineN))
+          .concat(display.view.slice(cutBot.index));
+        display.viewTo += lendiff;
+      } else {
+        resetView(cm);
+      }
+    }
+
+    var ext = display.externalMeasured;
+    if (ext) {
+      if (to < ext.lineN)
+        { ext.lineN += lendiff; }
+      else if (from < ext.lineN + ext.size)
+        { display.externalMeasured = null; }
+    }
+  }
+
+  // Register a change to a single line. Type must be one of "text",
+  // "gutter", "class", "widget"
+  function regLineChange(cm, line, type) {
+    cm.curOp.viewChanged = true;
+    var display = cm.display, ext = cm.display.externalMeasured;
+    if (ext && line >= ext.lineN && line < ext.lineN + ext.size)
+      { display.externalMeasured = null; }
+
+    if (line < display.viewFrom || line >= display.viewTo) { return }
+    var lineView = display.view[findViewIndex(cm, line)];
+    if (lineView.node == null) { return }
+    var arr = lineView.changes || (lineView.changes = []);
+    if (indexOf(arr, type) == -1) { arr.push(type); }
+  }
+
+  // Clear the view.
+  function resetView(cm) {
+    cm.display.viewFrom = cm.display.viewTo = cm.doc.first;
+    cm.display.view = [];
+    cm.display.viewOffset = 0;
+  }
+
+  function viewCuttingPoint(cm, oldN, newN, dir) {
+    var index = findViewIndex(cm, oldN), diff, view = cm.display.view;
+    if (!sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
+      { return {index: index, lineN: newN} }
+    var n = cm.display.viewFrom;
+    for (var i = 0; i < index; i++)
+      { n += view[i].size; }
+    if (n != oldN) {
+      if (dir > 0) {
+        if (index == view.length - 1) { return null }
+        diff = (n + view[index].size) - oldN;
+        index++;
+      } else {
+        diff = n - oldN;
+      }
+      oldN += diff; newN += diff;
+    }
+    while (visualLineNo(cm.doc, newN) != newN) {
+      if (index == (dir < 0 ? 0 : view.length - 1)) { return null }
+      newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
+      index += dir;
+    }
+    return {index: index, lineN: newN}
+  }
+
+  // Force the view to cover a given range, adding empty view element
+  // or clipping off existing ones as needed.
+  function adjustView(cm, from, to) {
+    var display = cm.display, view = display.view;
+    if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
+      display.view = buildViewArray(cm, from, to);
+      display.viewFrom = from;
+    } else {
+      if (display.viewFrom > from)
+        { display.view = buildViewArray(cm, from, display.viewFrom).concat(display.view); }
+      else if (display.viewFrom < from)
+        { display.view = display.view.slice(findViewIndex(cm, from)); }
+      display.viewFrom = from;
+      if (display.viewTo < to)
+        { display.view = display.view.concat(buildViewArray(cm, display.viewTo, to)); }
+      else if (display.viewTo > to)
+        { display.view = display.view.slice(0, findViewIndex(cm, to)); }
+    }
+    display.viewTo = to;
+  }
+
+  // Count the number of lines in the view whose DOM representation is
+  // out of date (or nonexistent).
+  function countDirtyView(cm) {
+    var view = cm.display.view, dirty = 0;
+    for (var i = 0; i < view.length; i++) {
+      var lineView = view[i];
+      if (!lineView.hidden && (!lineView.node || lineView.changes)) { ++dirty; }
+    }
+    return dirty
+  }
+
   // HIGHLIGHT WORKER
 
   function startWorker(cm, time) {
@@ -10936,8 +10853,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       { this.events.push(arguments); }
   };
   DisplayUpdate.prototype.finish = function () {
+      var this$1 = this;
+
     for (var i = 0; i < this.events.length; i++)
-      { signal.apply(null, this.events[i]); }
+      { signal.apply(null, this$1.events[i]); }
   };
 
   function maybeClipScrollbars(cm) {
@@ -10971,13 +10890,12 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   function restoreSelection(snapshot) {
     if (!snapshot || !snapshot.activeElt || snapshot.activeElt == activeElt()) { return }
     snapshot.activeElt.focus();
-    if (!/^(INPUT|TEXTAREA)$/.test(snapshot.activeElt.nodeName) &&
-        snapshot.anchorNode && contains(document.body, snapshot.anchorNode) && contains(document.body, snapshot.focusNode)) {
-      var sel = window.getSelection(), range = document.createRange();
-      range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
-      range.collapse(false);
+    if (snapshot.anchorNode && contains(document.body, snapshot.anchorNode) && contains(document.body, snapshot.focusNode)) {
+      var sel = window.getSelection(), range$$1 = document.createRange();
+      range$$1.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
+      range$$1.collapse(false);
       sel.removeAllRanges();
-      sel.addRange(range);
+      sel.addRange(range$$1);
       sel.extend(snapshot.focusNode, snapshot.focusOffset);
     }
   }
@@ -11070,8 +10988,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         update.visible = visibleLines(cm.display, cm.doc, viewport);
         if (update.visible.from >= cm.display.viewFrom && update.visible.to <= cm.display.viewTo)
           { break }
-      } else if (first) {
-        update.visible = visibleLines(cm.display, cm.doc, viewport);
       }
       if (!updateDisplayIfNeeded(cm, update)) { break }
       updateHeightsInViewport(cm);
@@ -11147,9 +11063,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     while (cur) { cur = rm(cur); }
   }
 
-  function updateGutterSpace(display) {
-    var width = display.gutters.offsetWidth;
-    display.sizer.style.marginLeft = width + "px";
+  function updateGutterSpace(cm) {
+    var width = cm.display.gutters.offsetWidth;
+    cm.display.sizer.style.marginLeft = width + "px";
   }
 
   function setDocumentHeight(cm, measure) {
@@ -11158,195 +11074,34 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     cm.display.gutters.style.height = (measure.docHeight + cm.display.barHeight + scrollGap(cm)) + "px";
   }
 
-  // Re-align line numbers and gutter marks to compensate for
-  // horizontal scrolling.
-  function alignHorizontally(cm) {
-    var display = cm.display, view = display.view;
-    if (!display.alignWidgets && (!display.gutters.firstChild || !cm.options.fixedGutter)) { return }
-    var comp = compensateForHScroll(display) - display.scroller.scrollLeft + cm.doc.scrollLeft;
-    var gutterW = display.gutters.offsetWidth, left = comp + "px";
-    for (var i = 0; i < view.length; i++) { if (!view[i].hidden) {
-      if (cm.options.fixedGutter) {
-        if (view[i].gutter)
-          { view[i].gutter.style.left = left; }
-        if (view[i].gutterBackground)
-          { view[i].gutterBackground.style.left = left; }
-      }
-      var align = view[i].alignable;
-      if (align) { for (var j = 0; j < align.length; j++)
-        { align[j].style.left = left; } }
-    } }
-    if (cm.options.fixedGutter)
-      { display.gutters.style.left = (comp + gutterW) + "px"; }
-  }
-
-  // Used to ensure that the line number gutter is still the right
-  // size for the current document size. Returns true when an update
-  // is needed.
-  function maybeUpdateLineNumberWidth(cm) {
-    if (!cm.options.lineNumbers) { return false }
-    var doc = cm.doc, last = lineNumberFor(cm.options, doc.first + doc.size - 1), display = cm.display;
-    if (last.length != display.lineNumChars) {
-      var test = display.measure.appendChild(elt("div", [elt("div", last)],
-                                                 "CodeMirror-linenumber CodeMirror-gutter-elt"));
-      var innerW = test.firstChild.offsetWidth, padding = test.offsetWidth - innerW;
-      display.lineGutter.style.width = "";
-      display.lineNumInnerWidth = Math.max(innerW, display.lineGutter.offsetWidth - padding) + 1;
-      display.lineNumWidth = display.lineNumInnerWidth + padding;
-      display.lineNumChars = display.lineNumInnerWidth ? last.length : -1;
-      display.lineGutter.style.width = display.lineNumWidth + "px";
-      updateGutterSpace(cm.display);
-      return true
-    }
-    return false
-  }
-
-  function getGutters(gutters, lineNumbers) {
-    var result = [], sawLineNumbers = false;
-    for (var i = 0; i < gutters.length; i++) {
-      var name = gutters[i], style = null;
-      if (typeof name != "string") { style = name.style; name = name.className; }
-      if (name == "CodeMirror-linenumbers") {
-        if (!lineNumbers) { continue }
-        else { sawLineNumbers = true; }
-      }
-      result.push({className: name, style: style});
-    }
-    if (lineNumbers && !sawLineNumbers) { result.push({className: "CodeMirror-linenumbers", style: null}); }
-    return result
-  }
-
   // Rebuild the gutter elements, ensure the margin to the left of the
   // code matches their width.
-  function renderGutters(display) {
-    var gutters = display.gutters, specs = display.gutterSpecs;
+  function updateGutters(cm) {
+    var gutters = cm.display.gutters, specs = cm.options.gutters;
     removeChildren(gutters);
-    display.lineGutter = null;
-    for (var i = 0; i < specs.length; ++i) {
-      var ref = specs[i];
-      var className = ref.className;
-      var style = ref.style;
-      var gElt = gutters.appendChild(elt("div", null, "CodeMirror-gutter " + className));
-      if (style) { gElt.style.cssText = style; }
-      if (className == "CodeMirror-linenumbers") {
-        display.lineGutter = gElt;
-        gElt.style.width = (display.lineNumWidth || 1) + "px";
+    var i = 0;
+    for (; i < specs.length; ++i) {
+      var gutterClass = specs[i];
+      var gElt = gutters.appendChild(elt("div", null, "CodeMirror-gutter " + gutterClass));
+      if (gutterClass == "CodeMirror-linenumbers") {
+        cm.display.lineGutter = gElt;
+        gElt.style.width = (cm.display.lineNumWidth || 1) + "px";
       }
     }
-    gutters.style.display = specs.length ? "" : "none";
-    updateGutterSpace(display);
+    gutters.style.display = i ? "" : "none";
+    updateGutterSpace(cm);
   }
 
-  function updateGutters(cm) {
-    renderGutters(cm.display);
-    regChange(cm);
-    alignHorizontally(cm);
-  }
-
-  // The display handles the DOM integration, both for input reading
-  // and content drawing. It holds references to DOM nodes and
-  // display-related state.
-
-  function Display(place, doc, input, options) {
-    var d = this;
-    this.input = input;
-
-    // Covers bottom-right square when both scrollbars are present.
-    d.scrollbarFiller = elt("div", null, "CodeMirror-scrollbar-filler");
-    d.scrollbarFiller.setAttribute("cm-not-content", "true");
-    // Covers bottom of gutter when coverGutterNextToScrollbar is on
-    // and h scrollbar is present.
-    d.gutterFiller = elt("div", null, "CodeMirror-gutter-filler");
-    d.gutterFiller.setAttribute("cm-not-content", "true");
-    // Will contain the actual code, positioned to cover the viewport.
-    d.lineDiv = eltP("div", null, "CodeMirror-code");
-    // Elements are added to these to represent selection and cursors.
-    d.selectionDiv = elt("div", null, null, "position: relative; z-index: 1");
-    d.cursorDiv = elt("div", null, "CodeMirror-cursors");
-    // A visibility: hidden element used to find the size of things.
-    d.measure = elt("div", null, "CodeMirror-measure");
-    // When lines outside of the viewport are measured, they are drawn in this.
-    d.lineMeasure = elt("div", null, "CodeMirror-measure");
-    // Wraps everything that needs to exist inside the vertically-padded coordinate system
-    d.lineSpace = eltP("div", [d.measure, d.lineMeasure, d.selectionDiv, d.cursorDiv, d.lineDiv],
-                      null, "position: relative; outline: none");
-    var lines = eltP("div", [d.lineSpace], "CodeMirror-lines");
-    // Moved around its parent to cover visible view.
-    d.mover = elt("div", [lines], null, "position: relative");
-    // Set to the height of the document, allowing scrolling.
-    d.sizer = elt("div", [d.mover], "CodeMirror-sizer");
-    d.sizerWidth = null;
-    // Behavior of elts with overflow: auto and padding is
-    // inconsistent across browsers. This is used to ensure the
-    // scrollable area is big enough.
-    d.heightForcer = elt("div", null, null, "position: absolute; height: " + scrollerGap + "px; width: 1px;");
-    // Will contain the gutters, if any.
-    d.gutters = elt("div", null, "CodeMirror-gutters");
-    d.lineGutter = null;
-    // Actual scrollable element.
-    d.scroller = elt("div", [d.sizer, d.heightForcer, d.gutters], "CodeMirror-scroll");
-    d.scroller.setAttribute("tabIndex", "-1");
-    // The element in which the editor lives.
-    d.wrapper = elt("div", [d.scrollbarFiller, d.gutterFiller, d.scroller], "CodeMirror");
-
-    // Work around IE7 z-index bug (not perfect, hence IE7 not really being supported)
-    if (ie && ie_version < 8) { d.gutters.style.zIndex = -1; d.scroller.style.paddingRight = 0; }
-    if (!webkit && !(gecko && mobile)) { d.scroller.draggable = true; }
-
-    if (place) {
-      if (place.appendChild) { place.appendChild(d.wrapper); }
-      else { place(d.wrapper); }
+  // Make sure the gutters options contains the element
+  // "CodeMirror-linenumbers" when the lineNumbers option is true.
+  function setGuttersForLineNumbers(options) {
+    var found = indexOf(options.gutters, "CodeMirror-linenumbers");
+    if (found == -1 && options.lineNumbers) {
+      options.gutters = options.gutters.concat(["CodeMirror-linenumbers"]);
+    } else if (found > -1 && !options.lineNumbers) {
+      options.gutters = options.gutters.slice(0);
+      options.gutters.splice(found, 1);
     }
-
-    // Current rendered range (may be bigger than the view window).
-    d.viewFrom = d.viewTo = doc.first;
-    d.reportedViewFrom = d.reportedViewTo = doc.first;
-    // Information about the rendered lines.
-    d.view = [];
-    d.renderedView = null;
-    // Holds info about a single rendered line when it was rendered
-    // for measurement, while not in view.
-    d.externalMeasured = null;
-    // Empty space (in pixels) above the view
-    d.viewOffset = 0;
-    d.lastWrapHeight = d.lastWrapWidth = 0;
-    d.updateLineNumbers = null;
-
-    d.nativeBarWidth = d.barHeight = d.barWidth = 0;
-    d.scrollbarsClipped = false;
-
-    // Used to only resize the line number gutter when necessary (when
-    // the amount of lines crosses a boundary that makes its width change)
-    d.lineNumWidth = d.lineNumInnerWidth = d.lineNumChars = null;
-    // Set to true when a non-horizontal-scrolling line widget is
-    // added. As an optimization, line widget aligning is skipped when
-    // this is false.
-    d.alignWidgets = false;
-
-    d.cachedCharWidth = d.cachedTextHeight = d.cachedPaddingH = null;
-
-    // Tracks the maximum line length so that the horizontal scrollbar
-    // can be kept static when scrolling.
-    d.maxLine = null;
-    d.maxLineLength = 0;
-    d.maxLineChanged = false;
-
-    // Used for measuring wheel scrolling granularity
-    d.wheelDX = d.wheelDY = d.wheelStartX = d.wheelStartY = null;
-
-    // True when shift is held down.
-    d.shift = false;
-
-    // Used to track whether anything happened since the context menu
-    // was opened.
-    d.selForContextMenu = null;
-
-    d.activeTouch = null;
-
-    d.gutterSpecs = getGutters(options.gutters, options.lineNumbers);
-    renderGutters(d);
-
-    input.init(d);
   }
 
   // Since the delta values reported on mouse wheel events are
@@ -11472,32 +11227,40 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   Selection.prototype.primary = function () { return this.ranges[this.primIndex] };
 
   Selection.prototype.equals = function (other) {
+      var this$1 = this;
+
     if (other == this) { return true }
     if (other.primIndex != this.primIndex || other.ranges.length != this.ranges.length) { return false }
     for (var i = 0; i < this.ranges.length; i++) {
-      var here = this.ranges[i], there = other.ranges[i];
+      var here = this$1.ranges[i], there = other.ranges[i];
       if (!equalCursorPos(here.anchor, there.anchor) || !equalCursorPos(here.head, there.head)) { return false }
     }
     return true
   };
 
   Selection.prototype.deepCopy = function () {
+      var this$1 = this;
+
     var out = [];
     for (var i = 0; i < this.ranges.length; i++)
-      { out[i] = new Range(copyPos(this.ranges[i].anchor), copyPos(this.ranges[i].head)); }
+      { out[i] = new Range(copyPos(this$1.ranges[i].anchor), copyPos(this$1.ranges[i].head)); }
     return new Selection(out, this.primIndex)
   };
 
   Selection.prototype.somethingSelected = function () {
+      var this$1 = this;
+
     for (var i = 0; i < this.ranges.length; i++)
-      { if (!this.ranges[i].empty()) { return true } }
+      { if (!this$1.ranges[i].empty()) { return true } }
     return false
   };
 
   Selection.prototype.contains = function (pos, end) {
+      var this$1 = this;
+
     if (!end) { end = pos; }
     for (var i = 0; i < this.ranges.length; i++) {
-      var range = this.ranges[i];
+      var range = this$1.ranges[i];
       if (cmp(end, range.from()) >= 0 && cmp(pos, range.to()) <= 0)
         { return i }
     }
@@ -11623,16 +11386,16 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   }
 
   // Perform a change on the document data structure.
-  function updateDoc(doc, change, markedSpans, estimateHeight) {
+  function updateDoc(doc, change, markedSpans, estimateHeight$$1) {
     function spansFor(n) {return markedSpans ? markedSpans[n] : null}
     function update(line, text, spans) {
-      updateLine(line, text, spans, estimateHeight);
+      updateLine(line, text, spans, estimateHeight$$1);
       signalLater(line, "change", line, change);
     }
     function linesFor(start, end) {
       var result = [];
       for (var i = start; i < end; ++i)
-        { result.push(new Line(text[i], spansFor(i), estimateHeight)); }
+        { result.push(new Line(text[i], spansFor(i), estimateHeight$$1)); }
       return result
     }
 
@@ -11656,7 +11419,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         update(firstLine, firstLine.text.slice(0, from.ch) + lastText + firstLine.text.slice(to.ch), lastSpans);
       } else {
         var added$1 = linesFor(1, text.length - 1);
-        added$1.push(new Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight));
+        added$1.push(new Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight$$1));
         update(firstLine, firstLine.text.slice(0, from.ch) + text[0], spansFor(0));
         doc.insert(from.line + 1, added$1);
       }
@@ -11993,9 +11756,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var obj = {
       ranges: sel.ranges,
       update: function(ranges) {
+        var this$1 = this;
+
         this.ranges = [];
         for (var i = 0; i < ranges.length; i++)
-          { this.ranges[i] = new Range(clipPos(doc, ranges[i].anchor),
+          { this$1.ranges[i] = new Range(clipPos(doc, ranges[i].anchor),
                                      clipPos(doc, ranges[i].head)); }
       },
       origin: options && options.origin
@@ -12074,15 +11839,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var line = getLine(doc, pos.line);
     if (line.markedSpans) { for (var i = 0; i < line.markedSpans.length; ++i) {
       var sp = line.markedSpans[i], m = sp.marker;
-
-      // Determine if we should prevent the cursor being placed to the left/right of an atomic marker
-      // Historically this was determined using the inclusiveLeft/Right option, but the new way to control it
-      // is with selectLeft/Right
-      var preventCursorLeft = ("selectLeft" in m) ? !m.selectLeft : m.inclusiveLeft;
-      var preventCursorRight = ("selectRight" in m) ? !m.selectRight : m.inclusiveRight;
-
-      if ((sp.from == null || (preventCursorLeft ? sp.from <= pos.ch : sp.from < pos.ch)) &&
-          (sp.to == null || (preventCursorRight ? sp.to >= pos.ch : sp.to > pos.ch))) {
+      if ((sp.from == null || (m.inclusiveLeft ? sp.from <= pos.ch : sp.from < pos.ch)) &&
+          (sp.to == null || (m.inclusiveRight ? sp.to >= pos.ch : sp.to > pos.ch))) {
         if (mayClear) {
           signal(m, "beforeCursorEnter");
           if (m.explicitlyCleared) {
@@ -12094,14 +11852,14 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
         if (oldPos) {
           var near = m.find(dir < 0 ? 1 : -1), diff = (void 0);
-          if (dir < 0 ? preventCursorRight : preventCursorLeft)
+          if (dir < 0 ? m.inclusiveRight : m.inclusiveLeft)
             { near = movePos(doc, near, -dir, near && near.line == pos.line ? line : null); }
           if (near && near.line == pos.line && (diff = cmp(near, oldPos)) && (dir < 0 ? diff < 0 : diff > 0))
             { return skipAtomicInner(doc, near, pos, dir, mayClear) }
         }
 
         var far = m.find(dir < 0 ? -1 : 1);
-        if (dir < 0 ? preventCursorLeft : preventCursorRight)
+        if (dir < 0 ? m.inclusiveLeft : m.inclusiveRight)
           { far = movePos(doc, far, dir, far.line == pos.line ? line : null); }
         return far ? skipAtomicInner(doc, far, pos, dir, mayClear) : null
       }
@@ -12330,9 +12088,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     if (doc.cm) { makeChangeSingleDocInEditor(doc.cm, change, spans); }
     else { updateDoc(doc, change, spans); }
     setSelectionNoUndo(doc, selAfter, sel_dontScroll);
-
-    if (doc.cantEdit && skipAtomic(doc, Pos(doc.firstLine(), 0)))
-      { doc.cantEdit = false; }
   }
 
   // Handle the interaction of a change to a document with the editor
@@ -12482,11 +12237,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // See also http://marijnhaverbeke.nl/blog/codemirror-line-tree.html
 
   function LeafChunk(lines) {
+    var this$1 = this;
+
     this.lines = lines;
     this.parent = null;
     var height = 0;
     for (var i = 0; i < lines.length; ++i) {
-      lines[i].parent = this;
+      lines[i].parent = this$1;
       height += lines[i].height;
     }
     this.height = height;
@@ -12497,9 +12254,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
     // Remove the n lines at offset 'at'.
     removeInner: function(at, n) {
+      var this$1 = this;
+
       for (var i = at, e = at + n; i < e; ++i) {
-        var line = this.lines[i];
-        this.height -= line.height;
+        var line = this$1.lines[i];
+        this$1.height -= line.height;
         cleanUpLine(line);
         signalLater(line, "delete");
       }
@@ -12514,25 +12273,31 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // Insert the given array of lines at offset 'at', count them as
     // having the given height.
     insertInner: function(at, lines, height) {
+      var this$1 = this;
+
       this.height += height;
       this.lines = this.lines.slice(0, at).concat(lines).concat(this.lines.slice(at));
-      for (var i = 0; i < lines.length; ++i) { lines[i].parent = this; }
+      for (var i = 0; i < lines.length; ++i) { lines[i].parent = this$1; }
     },
 
     // Used to iterate over a part of the tree.
     iterN: function(at, n, op) {
+      var this$1 = this;
+
       for (var e = at + n; at < e; ++at)
-        { if (op(this.lines[at])) { return true } }
+        { if (op(this$1.lines[at])) { return true } }
     }
   };
 
   function BranchChunk(children) {
+    var this$1 = this;
+
     this.children = children;
     var size = 0, height = 0;
     for (var i = 0; i < children.length; ++i) {
       var ch = children[i];
       size += ch.chunkSize(); height += ch.height;
-      ch.parent = this;
+      ch.parent = this$1;
     }
     this.size = size;
     this.height = height;
@@ -12543,14 +12308,16 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     chunkSize: function() { return this.size },
 
     removeInner: function(at, n) {
+      var this$1 = this;
+
       this.size -= n;
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this.children[i], sz = child.chunkSize();
+        var child = this$1.children[i], sz = child.chunkSize();
         if (at < sz) {
           var rm = Math.min(n, sz - at), oldHeight = child.height;
           child.removeInner(at, rm);
-          this.height -= oldHeight - child.height;
-          if (sz == rm) { this.children.splice(i--, 1); child.parent = null; }
+          this$1.height -= oldHeight - child.height;
+          if (sz == rm) { this$1.children.splice(i--, 1); child.parent = null; }
           if ((n -= rm) == 0) { break }
           at = 0;
         } else { at -= sz; }
@@ -12567,14 +12334,18 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     },
 
     collapse: function(lines) {
-      for (var i = 0; i < this.children.length; ++i) { this.children[i].collapse(lines); }
+      var this$1 = this;
+
+      for (var i = 0; i < this.children.length; ++i) { this$1.children[i].collapse(lines); }
     },
 
     insertInner: function(at, lines, height) {
+      var this$1 = this;
+
       this.size += lines.length;
       this.height += height;
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this.children[i], sz = child.chunkSize();
+        var child = this$1.children[i], sz = child.chunkSize();
         if (at <= sz) {
           child.insertInner(at, lines, height);
           if (child.lines && child.lines.length > 50) {
@@ -12584,11 +12355,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
             for (var pos = remaining; pos < child.lines.length;) {
               var leaf = new LeafChunk(child.lines.slice(pos, pos += 25));
               child.height -= leaf.height;
-              this.children.splice(++i, 0, leaf);
-              leaf.parent = this;
+              this$1.children.splice(++i, 0, leaf);
+              leaf.parent = this$1;
             }
             child.lines = child.lines.slice(0, remaining);
-            this.maybeSpill();
+            this$1.maybeSpill();
           }
           break
         }
@@ -12620,8 +12391,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     },
 
     iterN: function(at, n, op) {
+      var this$1 = this;
+
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this.children[i], sz = child.chunkSize();
+        var child = this$1.children[i], sz = child.chunkSize();
         if (at < sz) {
           var used = Math.min(n, sz - at);
           if (child.iterN(at, used, op)) { return true }
@@ -12635,16 +12408,20 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // Line widgets are block elements displayed above or below a line.
 
   var LineWidget = function(doc, node, options) {
+    var this$1 = this;
+
     if (options) { for (var opt in options) { if (options.hasOwnProperty(opt))
-      { this[opt] = options[opt]; } } }
+      { this$1[opt] = options[opt]; } } }
     this.doc = doc;
     this.node = node;
   };
 
   LineWidget.prototype.clear = function () {
+      var this$1 = this;
+
     var cm = this.doc.cm, ws = this.line.widgets, line = this.line, no = lineNo(line);
     if (no == null || !ws) { return }
-    for (var i = 0; i < ws.length; ++i) { if (ws[i] == this) { ws.splice(i--, 1); } }
+    for (var i = 0; i < ws.length; ++i) { if (ws[i] == this$1) { ws.splice(i--, 1); } }
     if (!ws.length) { line.widgets = null; }
     var height = widgetHeight(this);
     updateLineHeight(line, Math.max(0, line.height - height));
@@ -12727,6 +12504,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   // Clear the marker.
   TextMarker.prototype.clear = function () {
+      var this$1 = this;
+
     if (this.explicitlyCleared) { return }
     var cm = this.doc.cm, withOp = cm && !cm.curOp;
     if (withOp) { startOperation(cm); }
@@ -12736,19 +12515,19 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }
     var min = null, max = null;
     for (var i = 0; i < this.lines.length; ++i) {
-      var line = this.lines[i];
-      var span = getMarkedSpanFor(line.markedSpans, this);
-      if (cm && !this.collapsed) { regLineChange(cm, lineNo(line), "text"); }
+      var line = this$1.lines[i];
+      var span = getMarkedSpanFor(line.markedSpans, this$1);
+      if (cm && !this$1.collapsed) { regLineChange(cm, lineNo(line), "text"); }
       else if (cm) {
         if (span.to != null) { max = lineNo(line); }
         if (span.from != null) { min = lineNo(line); }
       }
       line.markedSpans = removeMarkedSpan(line.markedSpans, span);
-      if (span.from == null && this.collapsed && !lineIsHidden(this.doc, line) && cm)
+      if (span.from == null && this$1.collapsed && !lineIsHidden(this$1.doc, line) && cm)
         { updateLineHeight(line, textHeight(cm.display)); }
     }
     if (cm && this.collapsed && !cm.options.lineWrapping) { for (var i$1 = 0; i$1 < this.lines.length; ++i$1) {
-      var visual = visualLine(this.lines[i$1]), len = lineLength(visual);
+      var visual = visualLine(this$1.lines[i$1]), len = lineLength(visual);
       if (len > cm.display.maxLineLength) {
         cm.display.maxLine = visual;
         cm.display.maxLineLength = len;
@@ -12774,11 +12553,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // Pos objects returned contain a line object, rather than a line
   // number (used to prevent looking up the same line twice).
   TextMarker.prototype.find = function (side, lineObj) {
+      var this$1 = this;
+
     if (side == null && this.type == "bookmark") { side = 1; }
     var from, to;
     for (var i = 0; i < this.lines.length; ++i) {
-      var line = this.lines[i];
-      var span = getMarkedSpanFor(line.markedSpans, this);
+      var line = this$1.lines[i];
+      var span = getMarkedSpanFor(line.markedSpans, this$1);
       if (span.from != null) {
         from = Pos(lineObj ? line : lineNo(line), span.from);
         if (side == -1) { return from }
@@ -12912,17 +12693,21 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   // implemented as a meta-marker-object controlling multiple normal
   // markers.
   var SharedTextMarker = function(markers, primary) {
+    var this$1 = this;
+
     this.markers = markers;
     this.primary = primary;
     for (var i = 0; i < markers.length; ++i)
-      { markers[i].parent = this; }
+      { markers[i].parent = this$1; }
   };
 
   SharedTextMarker.prototype.clear = function () {
+      var this$1 = this;
+
     if (this.explicitlyCleared) { return }
     this.explicitlyCleared = true;
     for (var i = 0; i < this.markers.length; ++i)
-      { this.markers[i].clear(); }
+      { this$1.markers[i].clear(); }
     signalLater(this, "clear");
   };
 
@@ -13065,11 +12850,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     clipPos: function(pos) {return clipPos(this, pos)},
 
     getCursor: function(start) {
-      var range = this.sel.primary(), pos;
-      if (start == null || start == "head") { pos = range.head; }
-      else if (start == "anchor") { pos = range.anchor; }
-      else if (start == "end" || start == "to" || start === false) { pos = range.to(); }
-      else { pos = range.from(); }
+      var range$$1 = this.sel.primary(), pos;
+      if (start == null || start == "head") { pos = range$$1.head; }
+      else if (start == "anchor") { pos = range$$1.anchor; }
+      else if (start == "end" || start == "to" || start === false) { pos = range$$1.to(); }
+      else { pos = range$$1.from(); }
       return pos
     },
     listSelections: function() { return this.sel.ranges },
@@ -13092,11 +12877,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       extendSelections(this, clipPosArray(this, heads), options);
     }),
     setSelections: docMethodOp(function(ranges, primary, options) {
+      var this$1 = this;
+
       if (!ranges.length) { return }
       var out = [];
       for (var i = 0; i < ranges.length; i++)
-        { out[i] = new Range(clipPos(this, ranges[i].anchor),
-                           clipPos(this, ranges[i].head)); }
+        { out[i] = new Range(clipPos(this$1, ranges[i].anchor),
+                           clipPos(this$1, ranges[i].head)); }
       if (primary == null) { primary = Math.min(ranges.length - 1, this.sel.primIndex); }
       setSelection(this, normalizeSelection(this.cm, out, primary), options);
     }),
@@ -13107,19 +12894,23 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     }),
 
     getSelection: function(lineSep) {
+      var this$1 = this;
+
       var ranges = this.sel.ranges, lines;
       for (var i = 0; i < ranges.length; i++) {
-        var sel = getBetween(this, ranges[i].from(), ranges[i].to());
+        var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
         lines = lines ? lines.concat(sel) : sel;
       }
       if (lineSep === false) { return lines }
       else { return lines.join(lineSep || this.lineSeparator()) }
     },
     getSelections: function(lineSep) {
+      var this$1 = this;
+
       var parts = [], ranges = this.sel.ranges;
       for (var i = 0; i < ranges.length; i++) {
-        var sel = getBetween(this, ranges[i].from(), ranges[i].to());
-        if (lineSep !== false) { sel = sel.join(lineSep || this.lineSeparator()); }
+        var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
+        if (lineSep !== false) { sel = sel.join(lineSep || this$1.lineSeparator()); }
         parts[i] = sel;
       }
       return parts
@@ -13131,14 +12922,16 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       this.replaceSelections(dup, collapse, origin || "+input");
     },
     replaceSelections: docMethodOp(function(code, collapse, origin) {
+      var this$1 = this;
+
       var changes = [], sel = this.sel;
       for (var i = 0; i < sel.ranges.length; i++) {
-        var range = sel.ranges[i];
-        changes[i] = {from: range.from(), to: range.to(), text: this.splitLines(code[i]), origin: origin};
+        var range$$1 = sel.ranges[i];
+        changes[i] = {from: range$$1.from(), to: range$$1.to(), text: this$1.splitLines(code[i]), origin: origin};
       }
       var newSel = collapse && collapse != "end" && computeReplacedSel(this, changes, collapse);
       for (var i$1 = changes.length - 1; i$1 >= 0; i$1--)
-        { makeChange(this, changes[i$1]); }
+        { makeChange(this$1, changes[i$1]); }
       if (newSel) { setSelectionReplaceHistory(this, newSel); }
       else if (this.cm) { ensureCursorVisible(this.cm); }
     }),
@@ -13156,12 +12949,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       for (var i$1 = 0; i$1 < hist.undone.length; i$1++) { if (!hist.undone[i$1].ranges) { ++undone; } }
       return {undo: done, redo: undone}
     },
-    clearHistory: function() {
-      var this$1 = this;
-
-      this.history = new History(this.history.maxGeneration);
-      linkedDocs(this, function (doc) { return doc.history = this$1.history; }, true);
-    },
+    clearHistory: function() {this.history = new History(this.history.maxGeneration);},
 
     markClean: function() {
       this.cleanGeneration = this.changeGeneration(true);
@@ -13282,18 +13070,18 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     },
     findMarks: function(from, to, filter) {
       from = clipPos(this, from); to = clipPos(this, to);
-      var found = [], lineNo = from.line;
+      var found = [], lineNo$$1 = from.line;
       this.iter(from.line, to.line + 1, function (line) {
         var spans = line.markedSpans;
         if (spans) { for (var i = 0; i < spans.length; i++) {
           var span = spans[i];
-          if (!(span.to != null && lineNo == from.line && from.ch >= span.to ||
-                span.from == null && lineNo != from.line ||
-                span.from != null && lineNo == to.line && span.from >= to.ch) &&
+          if (!(span.to != null && lineNo$$1 == from.line && from.ch >= span.to ||
+                span.from == null && lineNo$$1 != from.line ||
+                span.from != null && lineNo$$1 == to.line && span.from >= to.ch) &&
               (!filter || filter(span.marker)))
             { found.push(span.marker.parent || span.marker); }
         } }
-        ++lineNo;
+        ++lineNo$$1;
       });
       return found
     },
@@ -13308,14 +13096,14 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     },
 
     posFromIndex: function(off) {
-      var ch, lineNo = this.first, sepSize = this.lineSeparator().length;
+      var ch, lineNo$$1 = this.first, sepSize = this.lineSeparator().length;
       this.iter(function (line) {
         var sz = line.text.length + sepSize;
         if (sz > off) { ch = off; return true }
         off -= sz;
-        ++lineNo;
+        ++lineNo$$1;
       });
-      return clipPos(this, Pos(lineNo, ch))
+      return clipPos(this, Pos(lineNo$$1, ch))
     },
     indexFromPos: function (coords) {
       coords = clipPos(this, coords);
@@ -13354,13 +13142,15 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       return copy
     },
     unlinkDoc: function(other) {
+      var this$1 = this;
+
       if (other instanceof CodeMirror) { other = other.doc; }
       if (this.linked) { for (var i = 0; i < this.linked.length; ++i) {
-        var link = this.linked[i];
+        var link = this$1.linked[i];
         if (link.doc != other) { continue }
-        this.linked.splice(i, 1);
-        other.unlinkDoc(this);
-        detachSharedMarkers(findSharedMarkers(this));
+        this$1.linked.splice(i, 1);
+        other.unlinkDoc(this$1);
+        detachSharedMarkers(findSharedMarkers(this$1));
         break
       } }
       // If the histories were shared, split them again
@@ -13412,39 +13202,28 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // and insert it.
     if (files && files.length && window.FileReader && window.File) {
       var n = files.length, text = Array(n), read = 0;
-      var markAsReadAndPasteIfAllFilesAreRead = function () {
-        if (++read == n) {
-          operation(cm, function () {
+      var loadFile = function (file, i) {
+        if (cm.options.allowDropFileTypes &&
+            indexOf(cm.options.allowDropFileTypes, file.type) == -1)
+          { return }
+
+        var reader = new FileReader;
+        reader.onload = operation(cm, function () {
+          var content = reader.result;
+          if (/[\x00-\x08\x0e-\x1f]{2}/.test(content)) { content = ""; }
+          text[i] = content;
+          if (++read == n) {
             pos = clipPos(cm.doc, pos);
             var change = {from: pos, to: pos,
-                          text: cm.doc.splitLines(
-                              text.filter(function (t) { return t != null; }).join(cm.doc.lineSeparator())),
+                          text: cm.doc.splitLines(text.join(cm.doc.lineSeparator())),
                           origin: "paste"};
             makeChange(cm.doc, change);
-            setSelectionReplaceHistory(cm.doc, simpleSelection(clipPos(cm.doc, pos), clipPos(cm.doc, changeEnd(change))));
-          })();
-        }
-      };
-      var readTextFromFile = function (file, i) {
-        if (cm.options.allowDropFileTypes &&
-            indexOf(cm.options.allowDropFileTypes, file.type) == -1) {
-          markAsReadAndPasteIfAllFilesAreRead();
-          return
-        }
-        var reader = new FileReader;
-        reader.onerror = function () { return markAsReadAndPasteIfAllFilesAreRead(); };
-        reader.onload = function () {
-          var content = reader.result;
-          if (/[\x00-\x08\x0e-\x1f]{2}/.test(content)) {
-            markAsReadAndPasteIfAllFilesAreRead();
-            return
+            setSelectionReplaceHistory(cm.doc, simpleSelection(pos, changeEnd(change)));
           }
-          text[i] = content;
-          markAsReadAndPasteIfAllFilesAreRead();
-        };
+        });
         reader.readAsText(file);
       };
-      for (var i = 0; i < files.length; i++) { readTextFromFile(files[i], i); }
+      for (var i = 0; i < n; ++i) { loadFile(files[i], i); }
     } else { // Normal drop
       // Don't do a replace if the drop happened inside of the selected text.
       if (cm.state.draggingText && cm.doc.sel.contains(pos) > -1) {
@@ -13466,7 +13245,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
           cm.display.input.focus();
         }
       }
-      catch(e$1){}
+      catch(e){}
     }
   }
 
@@ -13560,7 +13339,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     19: "Pause", 20: "CapsLock", 27: "Esc", 32: "Space", 33: "PageUp", 34: "PageDown", 35: "End",
     36: "Home", 37: "Left", 38: "Up", 39: "Right", 40: "Down", 44: "PrintScrn", 45: "Insert",
     46: "Delete", 59: ";", 61: "=", 91: "Mod", 92: "Mod", 93: "Mod",
-    106: "*", 107: "=", 109: "-", 110: ".", 111: "/", 145: "ScrollLock",
+    106: "*", 107: "=", 109: "-", 110: ".", 111: "/", 127: "Delete", 145: "ScrollLock",
     173: "-", 186: ";", 187: "=", 188: ",", 189: "-", 190: ".", 191: "/", 192: "`", 219: "[", 220: "\\",
     221: "]", 222: "'", 63232: "Up", 63233: "Down", 63234: "Left", 63235: "Right", 63272: "Delete",
     63273: "Home", 63275: "End", 63276: "PageUp", 63277: "PageDown", 63302: "Insert"
@@ -13669,18 +13448,18 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     return keymap
   }
 
-  function lookupKey(key, map, handle, context) {
-    map = getKeyMap(map);
-    var found = map.call ? map.call(key, context) : map[key];
+  function lookupKey(key, map$$1, handle, context) {
+    map$$1 = getKeyMap(map$$1);
+    var found = map$$1.call ? map$$1.call(key, context) : map$$1[key];
     if (found === false) { return "nothing" }
     if (found === "...") { return "multi" }
     if (found != null && handle(found)) { return "handled" }
 
-    if (map.fallthrough) {
-      if (Object.prototype.toString.call(map.fallthrough) != "[object Array]")
-        { return lookupKey(key, map.fallthrough, handle, context) }
-      for (var i = 0; i < map.fallthrough.length; i++) {
-        var result = lookupKey(key, map.fallthrough[i], handle, context);
+    if (map$$1.fallthrough) {
+      if (Object.prototype.toString.call(map$$1.fallthrough) != "[object Array]")
+        { return lookupKey(key, map$$1.fallthrough, handle, context) }
+      for (var i = 0; i < map$$1.fallthrough.length; i++) {
+        var result = lookupKey(key, map$$1.fallthrough[i], handle, context);
         if (result) { return result }
       }
     }
@@ -13754,7 +13533,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   function endOfLine(visually, cm, lineObj, lineNo, dir) {
     if (visually) {
-      if (cm.doc.direction == "rtl") { dir = -dir; }
       var order = getOrder(lineObj, cm.doc.direction);
       if (order) {
         var part = dir < 0 ? lst(order) : order[0];
@@ -14009,7 +13787,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var line = getLine(cm.doc, start.line);
     var order = getOrder(line, cm.doc.direction);
     if (!order || order[0].level == 0) {
-      var firstNonWS = Math.max(start.ch, line.text.search(/\S/));
+      var firstNonWS = Math.max(0, line.text.search(/\S/));
       var inWS = pos.line == start.line && pos.ch <= firstNonWS && pos.ch;
       return Pos(start.line, inWS ? 0 : firstNonWS, start.sticky)
     }
@@ -14112,7 +13890,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   var lastStoppedKey = null;
   function onKeyDown(e) {
     var cm = this;
-    if (e.target && e.target != cm.display.input.getField()) { return }
     cm.curOp.focus = activeElt();
     if (signalDOMEvent(cm, e)) { return }
     // IE does strange things with escape.
@@ -14126,8 +13903,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       if (!handled && code == 88 && !hasCopyEvent && (mac ? e.metaKey : e.ctrlKey))
         { cm.replaceSelection("", null, "cut"); }
     }
-    if (gecko && !mac && !handled && code == 46 && e.shiftKey && !e.ctrlKey && document.execCommand)
-      { document.execCommand("cut"); }
 
     // Turn mouse into crosshair when Alt is held on Mac.
     if (code == 18 && !/\bCodeMirror-crosshair\b/.test(cm.display.lineDiv.className))
@@ -14156,7 +13931,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   function onKeyPress(e) {
     var cm = this;
-    if (e.target && e.target != cm.display.input.getField()) { return }
     if (eventInWidget(cm.display, e) || signalDOMEvent(cm, e) || e.ctrlKey && !e.altKey || mac && e.metaKey) { return }
     var keyCode = e.keyCode, charCode = e.charCode;
     if (presto && keyCode == lastStoppedKey) {lastStoppedKey = null; e_preventDefault(e); return}
@@ -14305,8 +14079,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         if (!behavior.addNew)
           { extendSelection(cm.doc, pos, null, null, behavior.extend); }
         // Work around unexplainable focus problem in IE9 (#2127) and Chrome (#3081)
-        if ((webkit && !safari) || ie && ie_version == 9)
-          { setTimeout(function () {display.wrapper.ownerDocument.body.focus({preventScroll: true}); display.input.focus();}, 20); }
+        if (webkit || ie && ie_version == 9)
+          { setTimeout(function () {display.wrapper.ownerDocument.body.focus(); display.input.focus();}, 20); }
         else
           { display.input.focus(); }
       }
@@ -14360,11 +14134,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       start = posFromMouse(cm, event, true, true);
       ourIndex = -1;
     } else {
-      var range = rangeForUnit(cm, start, behavior.unit);
+      var range$$1 = rangeForUnit(cm, start, behavior.unit);
       if (behavior.extend)
-        { ourRange = extendRange(ourRange, range.anchor, range.head, behavior.extend); }
+        { ourRange = extendRange(ourRange, range$$1.anchor, range$$1.head, behavior.extend); }
       else
-        { ourRange = range; }
+        { ourRange = range$$1; }
     }
 
     if (!behavior.addNew) {
@@ -14407,14 +14181,14 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         cm.scrollIntoView(pos);
       } else {
         var oldRange = ourRange;
-        var range = rangeForUnit(cm, pos, behavior.unit);
+        var range$$1 = rangeForUnit(cm, pos, behavior.unit);
         var anchor = oldRange.anchor, head;
-        if (cmp(range.anchor, anchor) > 0) {
-          head = range.head;
-          anchor = minPos(oldRange.from(), range.anchor);
+        if (cmp(range$$1.anchor, anchor) > 0) {
+          head = range$$1.head;
+          anchor = minPos(oldRange.from(), range$$1.anchor);
         } else {
-          head = range.anchor;
-          anchor = maxPos(oldRange.to(), range.head);
+          head = range$$1.anchor;
+          anchor = maxPos(oldRange.to(), range$$1.head);
         }
         var ranges$1 = startSel.ranges.slice(0);
         ranges$1[ourIndex] = bidiSimplify(cm, new Range(clipPos(doc, anchor), head));
@@ -14452,13 +14226,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     function done(e) {
       cm.state.selectingText = false;
       counter = Infinity;
-      // If e is null or undefined we interpret this as someone trying
-      // to explicitly cancel the selection rather than the user
-      // letting go of the mouse button.
-      if (e) {
-        e_preventDefault(e);
-        display.input.focus();
-      }
+      e_preventDefault(e);
+      display.input.focus();
       off(display.wrapper.ownerDocument, "mousemove", move);
       off(display.wrapper.ownerDocument, "mouseup", up);
       doc.history.lastSelOrigin = null;
@@ -14476,17 +14245,17 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   // Used when mouse-selecting to adjust the anchor to the proper side
   // of a bidi jump depending on the visual position of the head.
-  function bidiSimplify(cm, range) {
-    var anchor = range.anchor;
-    var head = range.head;
+  function bidiSimplify(cm, range$$1) {
+    var anchor = range$$1.anchor;
+    var head = range$$1.head;
     var anchorLine = getLine(cm.doc, anchor.line);
-    if (cmp(anchor, head) == 0 && anchor.sticky == head.sticky) { return range }
+    if (cmp(anchor, head) == 0 && anchor.sticky == head.sticky) { return range$$1 }
     var order = getOrder(anchorLine);
-    if (!order) { return range }
+    if (!order) { return range$$1 }
     var index = getBidiPartAt(order, anchor.ch, anchor.sticky), part = order[index];
-    if (part.from != anchor.ch && part.to != anchor.ch) { return range }
+    if (part.from != anchor.ch && part.to != anchor.ch) { return range$$1 }
     var boundary = index + ((part.from == anchor.ch) == (part.level != 1) ? 0 : 1);
-    if (boundary == 0 || boundary == order.length) { return range }
+    if (boundary == 0 || boundary == order.length) { return range$$1 }
 
     // Compute the relative visual position of the head compared to the
     // anchor (<0 is to the left, >0 to the right)
@@ -14505,7 +14274,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var usePart = order[boundary + (leftSide ? -1 : 0)];
     var from = leftSide == (usePart.level == 1);
     var ch = from ? usePart.from : usePart.to, sticky = from ? "after" : "before";
-    return anchor.ch == ch && anchor.sticky == sticky ? range : new Range(new Pos(anchor.line, ch, sticky), head)
+    return anchor.ch == ch && anchor.sticky == sticky ? range$$1 : new Range(new Pos(anchor.line, ch, sticky), head)
   }
 
 
@@ -14518,7 +14287,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       mY = e.touches[0].clientY;
     } else {
       try { mX = e.clientX; mY = e.clientY; }
-      catch(e$1) { return false }
+      catch(e) { return false }
     }
     if (mX >= Math.floor(cm.display.gutters.getBoundingClientRect().right)) { return false }
     if (prevent) { e_preventDefault(e); }
@@ -14529,12 +14298,12 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     if (mY > lineBox.bottom || !hasHandler(cm, type)) { return e_defaultPrevented(e) }
     mY -= lineBox.top - display.viewOffset;
 
-    for (var i = 0; i < cm.display.gutterSpecs.length; ++i) {
+    for (var i = 0; i < cm.options.gutters.length; ++i) {
       var g = display.gutters.childNodes[i];
       if (g && g.getBoundingClientRect().right >= mX) {
         var line = lineAtHeight(cm.doc, mY);
-        var gutter = cm.display.gutterSpecs[i];
-        signal(cm, type, cm, line, gutter.className, e);
+        var gutter = cm.options.gutters[i];
+        signal(cm, type, cm, line, gutter, e);
         return e_defaultPrevented(e)
       }
     }
@@ -14618,7 +14387,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       for (var i = newBreaks.length - 1; i >= 0; i--)
         { replaceRange(cm.doc, val, newBreaks[i], Pos(newBreaks[i].line, newBreaks[i].ch + val.length)); }
     });
-    option("specialChars", /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200c\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]/g, function (cm, val, old) {
+    option("specialChars", /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028\u2029\ufeff]/g, function (cm, val, old) {
       cm.state.specialChars = new RegExp(val.source + (val.test("\t") ? "" : "|\t"), "g");
       if (old != Init) { cm.refresh(); }
     });
@@ -14635,7 +14404,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
     option("theme", "default", function (cm) {
       themeChanged(cm);
-      updateGutters(cm);
+      guttersChanged(cm);
     }, true);
     option("keyMap", "default", function (cm, val, old) {
       var next = getKeyMap(val);
@@ -14647,9 +14416,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     option("configureMouse", null);
 
     option("lineWrapping", false, wrappingChanged, true);
-    option("gutters", [], function (cm, val) {
-      cm.display.gutterSpecs = getGutters(val, cm.options.lineNumbers);
-      updateGutters(cm);
+    option("gutters", [], function (cm) {
+      setGuttersForLineNumbers(cm.options);
+      guttersChanged(cm);
     }, true);
     option("fixedGutter", true, function (cm, val) {
       cm.display.gutters.style.left = val ? compensateForHScroll(cm.display) + "px" : "0";
@@ -14662,12 +14431,12 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       cm.display.scrollbars.setScrollTop(cm.doc.scrollTop);
       cm.display.scrollbars.setScrollLeft(cm.doc.scrollLeft);
     }, true);
-    option("lineNumbers", false, function (cm, val) {
-      cm.display.gutterSpecs = getGutters(cm.options.gutters, val);
-      updateGutters(cm);
+    option("lineNumbers", false, function (cm) {
+      setGuttersForLineNumbers(cm.options);
+      guttersChanged(cm);
     }, true);
-    option("firstLineNumber", 1, updateGutters, true);
-    option("lineNumberFormatter", function (integer) { return integer; }, updateGutters, true);
+    option("firstLineNumber", 1, guttersChanged, true);
+    option("lineNumberFormatter", function (integer) { return integer; }, guttersChanged, true);
     option("showCursorWhenSelecting", false, updateSelection, true);
 
     option("resetSelectionOnContextMenu", true);
@@ -14682,12 +14451,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       }
       cm.display.input.readOnlyChanged(val);
     });
-
-    option("screenReaderLabel", null, function (cm, val) {
-      val = (val === '') ? null : val;
-      cm.display.input.screenReaderLabelChanged(val);
-    });
-
     option("disableInput", false, function (cm, val) {if (!val) { cm.display.input.reset(); }}, true);
     option("dragDrop", true, dragDropChanged);
     option("allowDropFileTypes", null);
@@ -14713,6 +14476,12 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     option("autofocus", null);
     option("direction", "ltr", function (cm, val) { return cm.doc.setDirection(val); }, true);
     option("phrases", null);
+  }
+
+  function guttersChanged(cm) {
+    updateGutters(cm);
+    regChange(cm);
+    alignHorizontally(cm);
   }
 
   function dragDropChanged(cm, value, old) {
@@ -14754,6 +14523,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     this.options = options = options ? copyObj(options) : {};
     // Determine effective options based on given values and defaults.
     copyObj(defaults, options, false);
+    setGuttersForLineNumbers(options);
 
     var doc = options.value;
     if (typeof doc == "string") { doc = new Doc(doc, options.mode, null, options.lineSeparator, options.direction); }
@@ -14761,8 +14531,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     this.doc = doc;
 
     var input = new CodeMirror.inputStyles[options.inputStyle](this);
-    var display = this.display = new Display(place, doc, input, options);
+    var display = this.display = new Display(place, doc, input);
     display.wrapper.CodeMirror = this;
+    updateGutters(this);
     themeChanged(this);
     if (options.lineWrapping)
       { this.display.wrapper.className += " CodeMirror-wrap"; }
@@ -14803,10 +14574,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       { onBlur(this); }
 
     for (var opt in optionHandlers) { if (optionHandlers.hasOwnProperty(opt))
-      { optionHandlers[opt](this, options[opt], Init); } }
+      { optionHandlers[opt](this$1, options[opt], Init); } }
     maybeUpdateLineNumberWidth(this);
     if (options.finishInit) { options.finishInit(this); }
-    for (var i = 0; i < initHooks.length; ++i) { initHooks[i](this); }
+    for (var i = 0; i < initHooks.length; ++i) { initHooks[i](this$1); }
     endOperation(this);
     // Suppress optimizelegibility in Webkit, since it breaks text
     // measuring on line wrapping boundaries.
@@ -14840,9 +14611,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // which point we can't mess with it anymore. Context menu is
     // handled in onMouseDown for these browsers.
     on(d.scroller, "contextmenu", function (e) { return onContextMenu(cm, e); });
-    on(d.input.getField(), "contextmenu", function (e) {
-      if (!d.scroller.contains(e.target)) { onContextMenu(cm, e); }
-    });
 
     // Used to suppress mouse event handling when a touch happens
     var touchFinished, prevTouch = {end: 0};
@@ -15031,9 +14799,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var updateInput = cm.curOp.updateInput;
     // Normal behavior is to insert the new text into every selection
     for (var i$1 = sel.ranges.length - 1; i$1 >= 0; i$1--) {
-      var range = sel.ranges[i$1];
-      var from = range.from(), to = range.to();
-      if (range.empty()) {
+      var range$$1 = sel.ranges[i$1];
+      var from = range$$1.from(), to = range$$1.to();
+      if (range$$1.empty()) {
         if (deleted && deleted > 0) // Handle deletion
           { from = Pos(from.line, from.ch - deleted); }
         else if (cm.state.overwrite && !paste) // Handle overwrite
@@ -15071,21 +14839,21 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var sel = cm.doc.sel;
 
     for (var i = sel.ranges.length - 1; i >= 0; i--) {
-      var range = sel.ranges[i];
-      if (range.head.ch > 100 || (i && sel.ranges[i - 1].head.line == range.head.line)) { continue }
-      var mode = cm.getModeAt(range.head);
+      var range$$1 = sel.ranges[i];
+      if (range$$1.head.ch > 100 || (i && sel.ranges[i - 1].head.line == range$$1.head.line)) { continue }
+      var mode = cm.getModeAt(range$$1.head);
       var indented = false;
       if (mode.electricChars) {
         for (var j = 0; j < mode.electricChars.length; j++)
           { if (inserted.indexOf(mode.electricChars.charAt(j)) > -1) {
-            indented = indentLine(cm, range.head.line, "smart");
+            indented = indentLine(cm, range$$1.head.line, "smart");
             break
           } }
       } else if (mode.electricInput) {
-        if (mode.electricInput.test(getLine(cm.doc, range.head.line).text.slice(0, range.head.ch)))
-          { indented = indentLine(cm, range.head.line, "smart"); }
+        if (mode.electricInput.test(getLine(cm.doc, range$$1.head.line).text.slice(0, range$$1.head.ch)))
+          { indented = indentLine(cm, range$$1.head.line, "smart"); }
       }
-      if (indented) { signalLater(cm, "electricInput", cm, range.head.line); }
+      if (indented) { signalLater(cm, "electricInput", cm, range$$1.head.line); }
     }
   }
 
@@ -15101,8 +14869,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
   }
 
   function disableBrowserMagic(field, spellcheck, autocorrect, autocapitalize) {
-    field.setAttribute("autocorrect", autocorrect ? "" : "off");
-    field.setAttribute("autocapitalize", autocapitalize ? "" : "off");
+    field.setAttribute("autocorrect", !!autocorrect);
+    field.setAttribute("autocapitalize", !!autocapitalize);
     field.setAttribute("spellcheck", !!spellcheck);
   }
 
@@ -15150,13 +14918,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       getOption: function(option) {return this.options[option]},
       getDoc: function() {return this.doc},
 
-      addKeyMap: function(map, bottom) {
-        this.state.keyMaps[bottom ? "push" : "unshift"](getKeyMap(map));
+      addKeyMap: function(map$$1, bottom) {
+        this.state.keyMaps[bottom ? "push" : "unshift"](getKeyMap(map$$1));
       },
-      removeKeyMap: function(map) {
+      removeKeyMap: function(map$$1) {
         var maps = this.state.keyMaps;
         for (var i = 0; i < maps.length; ++i)
-          { if (maps[i] == map || maps[i].name == map) {
+          { if (maps[i] == map$$1 || maps[i].name == map$$1) {
             maps.splice(i, 1);
             return true
           } }
@@ -15173,13 +14941,15 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         regChange(this);
       }),
       removeOverlay: methodOp(function(spec) {
+        var this$1 = this;
+
         var overlays = this.state.overlays;
         for (var i = 0; i < overlays.length; ++i) {
           var cur = overlays[i].modeSpec;
           if (cur == spec || typeof spec == "string" && cur.name == spec) {
             overlays.splice(i, 1);
-            this.state.modeGen++;
-            regChange(this);
+            this$1.state.modeGen++;
+            regChange(this$1);
             return
           }
         }
@@ -15193,22 +14963,24 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         if (isLine(this.doc, n)) { indentLine(this, n, dir, aggressive); }
       }),
       indentSelection: methodOp(function(how) {
+        var this$1 = this;
+
         var ranges = this.doc.sel.ranges, end = -1;
         for (var i = 0; i < ranges.length; i++) {
-          var range = ranges[i];
-          if (!range.empty()) {
-            var from = range.from(), to = range.to();
+          var range$$1 = ranges[i];
+          if (!range$$1.empty()) {
+            var from = range$$1.from(), to = range$$1.to();
             var start = Math.max(end, from.line);
-            end = Math.min(this.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
+            end = Math.min(this$1.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
             for (var j = start; j < end; ++j)
-              { indentLine(this, j, how); }
-            var newRanges = this.doc.sel.ranges;
+              { indentLine(this$1, j, how); }
+            var newRanges = this$1.doc.sel.ranges;
             if (from.ch == 0 && ranges.length == newRanges.length && newRanges[i].from().ch > 0)
-              { replaceOneSelection(this.doc, i, new Range(from, newRanges[i].to()), sel_dontScroll); }
-          } else if (range.head.line > end) {
-            indentLine(this, range.head.line, how, true);
-            end = range.head.line;
-            if (i == this.doc.sel.primIndex) { ensureCursorVisible(this); }
+              { replaceOneSelection(this$1.doc, i, new Range(from, newRanges[i].to()), sel_dontScroll); }
+          } else if (range$$1.head.line > end) {
+            indentLine(this$1, range$$1.head.line, how, true);
+            end = range$$1.head.line;
+            if (i == this$1.doc.sel.primIndex) { ensureCursorVisible(this$1); }
           }
         }
       }),
@@ -15250,6 +15022,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       },
 
       getHelpers: function(pos, type) {
+        var this$1 = this;
+
         var found = [];
         if (!helpers.hasOwnProperty(type)) { return found }
         var help = helpers[type], mode = this.getModeAt(pos);
@@ -15267,7 +15041,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         }
         for (var i$1 = 0; i$1 < help._global.length; i$1++) {
           var cur = help._global[i$1];
-          if (cur.pred(mode, this) && indexOf(found, cur.val) == -1)
+          if (cur.pred(mode, this$1) && indexOf(found, cur.val) == -1)
             { found.push(cur.val); }
         }
         return found
@@ -15280,10 +15054,10 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       },
 
       cursorCoords: function(start, mode) {
-        var pos, range = this.doc.sel.primary();
-        if (start == null) { pos = range.head; }
+        var pos, range$$1 = this.doc.sel.primary();
+        if (start == null) { pos = range$$1.head; }
         else if (typeof start == "object") { pos = clipPos(this.doc, start); }
-        else { pos = start ? range.from() : range.to(); }
+        else { pos = start ? range$$1.from() : range$$1.to(); }
         return cursorCoords(this, pos, mode || "page")
       },
 
@@ -15367,11 +15141,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       triggerElectric: methodOp(function(text) { triggerElectric(this, text); }),
 
       findPosH: function(from, amount, unit, visually) {
+        var this$1 = this;
+
         var dir = 1;
         if (amount < 0) { dir = -1; amount = -amount; }
         var cur = clipPos(this.doc, from);
         for (var i = 0; i < amount; ++i) {
-          cur = findPosH(this.doc, cur, dir, unit, visually);
+          cur = findPosH(this$1.doc, cur, dir, unit, visually);
           if (cur.hitSide) { break }
         }
         return cur
@@ -15380,11 +15156,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       moveH: methodOp(function(dir, unit) {
         var this$1 = this;
 
-        this.extendSelectionsBy(function (range) {
-          if (this$1.display.shift || this$1.doc.extend || range.empty())
-            { return findPosH(this$1.doc, range.head, dir, unit, this$1.options.rtlMoveVisually) }
+        this.extendSelectionsBy(function (range$$1) {
+          if (this$1.display.shift || this$1.doc.extend || range$$1.empty())
+            { return findPosH(this$1.doc, range$$1.head, dir, unit, this$1.options.rtlMoveVisually) }
           else
-            { return dir < 0 ? range.from() : range.to() }
+            { return dir < 0 ? range$$1.from() : range$$1.to() }
         }, sel_move);
       }),
 
@@ -15393,21 +15169,23 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         if (sel.somethingSelected())
           { doc.replaceSelection("", null, "+delete"); }
         else
-          { deleteNearSelection(this, function (range) {
-            var other = findPosH(doc, range.head, dir, unit, false);
-            return dir < 0 ? {from: other, to: range.head} : {from: range.head, to: other}
+          { deleteNearSelection(this, function (range$$1) {
+            var other = findPosH(doc, range$$1.head, dir, unit, false);
+            return dir < 0 ? {from: other, to: range$$1.head} : {from: range$$1.head, to: other}
           }); }
       }),
 
       findPosV: function(from, amount, unit, goalColumn) {
+        var this$1 = this;
+
         var dir = 1, x = goalColumn;
         if (amount < 0) { dir = -1; amount = -amount; }
         var cur = clipPos(this.doc, from);
         for (var i = 0; i < amount; ++i) {
-          var coords = cursorCoords(this, cur, "div");
+          var coords = cursorCoords(this$1, cur, "div");
           if (x == null) { x = coords.left; }
           else { coords.left = x; }
-          cur = findPosV(this, coords, dir, unit);
+          cur = findPosV(this$1, coords, dir, unit);
           if (cur.hitSide) { break }
         }
         return cur
@@ -15418,14 +15196,14 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
         var doc = this.doc, goals = [];
         var collapse = !this.display.shift && !doc.extend && doc.sel.somethingSelected();
-        doc.extendSelectionsBy(function (range) {
+        doc.extendSelectionsBy(function (range$$1) {
           if (collapse)
-            { return dir < 0 ? range.from() : range.to() }
-          var headPos = cursorCoords(this$1, range.head, "div");
-          if (range.goalColumn != null) { headPos.left = range.goalColumn; }
+            { return dir < 0 ? range$$1.from() : range$$1.to() }
+          var headPos = cursorCoords(this$1, range$$1.head, "div");
+          if (range$$1.goalColumn != null) { headPos.left = range$$1.goalColumn; }
           goals.push(headPos.left);
           var pos = findPosV(this$1, headPos, dir, unit);
-          if (unit == "page" && range == doc.sel.primary())
+          if (unit == "page" && range$$1 == doc.sel.primary())
             { addToScrollTop(this$1, charCoords(this$1, pos, "div").top - headPos.top); }
           return pos
         }, sel_move);
@@ -15472,22 +15250,22 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
                 clientHeight: displayHeight(this), clientWidth: displayWidth(this)}
       },
 
-      scrollIntoView: methodOp(function(range, margin) {
-        if (range == null) {
-          range = {from: this.doc.sel.primary().head, to: null};
+      scrollIntoView: methodOp(function(range$$1, margin) {
+        if (range$$1 == null) {
+          range$$1 = {from: this.doc.sel.primary().head, to: null};
           if (margin == null) { margin = this.options.cursorScrollMargin; }
-        } else if (typeof range == "number") {
-          range = {from: Pos(range, 0), to: null};
-        } else if (range.from == null) {
-          range = {from: range, to: null};
+        } else if (typeof range$$1 == "number") {
+          range$$1 = {from: Pos(range$$1, 0), to: null};
+        } else if (range$$1.from == null) {
+          range$$1 = {from: range$$1, to: null};
         }
-        if (!range.to) { range.to = range.from; }
-        range.margin = margin || 0;
+        if (!range$$1.to) { range$$1.to = range$$1.from; }
+        range$$1.margin = margin || 0;
 
-        if (range.from.line != null) {
-          scrollToRange(this, range);
+        if (range$$1.from.line != null) {
+          scrollToRange(this, range$$1);
         } else {
-          scrollToCoordsRange(this, range.from, range.to, range.margin);
+          scrollToCoordsRange(this, range$$1.from, range$$1.to, range$$1.margin);
         }
       }),
 
@@ -15498,11 +15276,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         if (width != null) { this.display.wrapper.style.width = interpret(width); }
         if (height != null) { this.display.wrapper.style.height = interpret(height); }
         if (this.options.lineWrapping) { clearLineMeasurementCache(this); }
-        var lineNo = this.display.viewFrom;
-        this.doc.iter(lineNo, this.display.viewTo, function (line) {
+        var lineNo$$1 = this.display.viewFrom;
+        this.doc.iter(lineNo$$1, this.display.viewTo, function (line) {
           if (line.widgets) { for (var i = 0; i < line.widgets.length; i++)
-            { if (line.widgets[i].noHScroll) { regLineChange(this$1, lineNo, "widget"); break } } }
-          ++lineNo;
+            { if (line.widgets[i].noHScroll) { regLineChange(this$1, lineNo$$1, "widget"); break } } }
+          ++lineNo$$1;
         });
         this.curOp.forceUpdate = true;
         signal(this, "refresh", this);
@@ -15518,8 +15296,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         this.curOp.forceUpdate = true;
         clearCaches(this);
         scrollToCoords(this, this.doc.scrollLeft, this.doc.scrollTop);
-        updateGutterSpace(this.display);
-        if (oldHeight == null || Math.abs(oldHeight - textHeight(this.display)) > .5 || this.options.lineWrapping)
+        updateGutterSpace(this);
+        if (oldHeight == null || Math.abs(oldHeight - textHeight(this.display)) > .5)
           { estimateLineHeights(this); }
         signal(this, "refresh", this);
       }),
@@ -15527,8 +15305,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       swapDoc: methodOp(function(doc) {
         var old = this.doc;
         old.cm = null;
-        // Cancel the current text selection if any (#5821)
-        if (this.state.selectingText) { this.state.selectingText(); }
         attachDoc(this, doc);
         clearCaches(this);
         this.display.input.reset();
@@ -15573,9 +15349,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var oldPos = pos;
     var origDir = dir;
     var lineObj = getLine(doc, pos.line);
-    var lineDir = visually && doc.direction == "rtl" ? -dir : dir;
     function findNextLine() {
-      var l = pos.line + lineDir;
+      var l = pos.line + dir;
       if (l < doc.first || l >= doc.first + doc.size) { return false }
       pos = new Pos(l, pos.ch, pos.sticky);
       return lineObj = getLine(doc, l)
@@ -15589,7 +15364,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
       }
       if (next == null) {
         if (!boundToLine && findNextLine())
-          { pos = endOfLine(visually, doc.cm, lineObj, pos.line, lineDir); }
+          { pos = endOfLine(visually, doc.cm, lineObj, pos.line, dir); }
         else
           { return false }
       } else {
@@ -15668,16 +15443,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var div = input.div = display.lineDiv;
     disableBrowserMagic(div, cm.options.spellcheck, cm.options.autocorrect, cm.options.autocapitalize);
 
-    function belongsToInput(e) {
-      for (var t = e.target; t; t = t.parentNode) {
-        if (t == div) { return true }
-        if (/\bCodeMirror-(?:line)?widget\b/.test(t.className)) { break }
-      }
-      return false
-    }
-
     on(div, "paste", function (e) {
-      if (!belongsToInput(e) || signalDOMEvent(cm, e) || handlePaste(e, cm)) { return }
+      if (signalDOMEvent(cm, e) || handlePaste(e, cm)) { return }
       // IE doesn't fire input events, so we schedule a read for the pasted content in this way
       if (ie_version <= 11) { setTimeout(operation(cm, function () { return this$1.updateFromDOM(); }), 20); }
     });
@@ -15702,7 +15469,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     });
 
     function onCopyCut(e) {
-      if (!belongsToInput(e) || signalDOMEvent(cm, e)) { return }
+      if (signalDOMEvent(cm, e)) { return }
       if (cm.somethingSelected()) {
         setLastCopied({lineWise: false, text: cm.getSelections()});
         if (e.type == "cut") { cm.replaceSelection("", null, "cut"); }
@@ -15744,18 +15511,9 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     on(div, "cut", onCopyCut);
   };
 
-  ContentEditableInput.prototype.screenReaderLabelChanged = function (label) {
-    // Label for screenreaders, accessibility
-    if(label) {
-      this.div.setAttribute('aria-label', label);
-    } else {
-      this.div.removeAttribute('aria-label');
-    }
-  };
-
   ContentEditableInput.prototype.prepareSelection = function () {
     var result = prepareSelection(this.cm, false);
-    result.focus = document.activeElement == this.div;
+    result.focus = this.cm.state.focused;
     return result
   };
 
@@ -15791,8 +15549,8 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     var end = to.line < cm.display.viewTo && posToDOM(cm, to);
     if (!end) {
       var measure = view[view.length - 1].measure;
-      var map = measure.maps ? measure.maps[measure.maps.length - 1] : measure.map;
-      end = {node: map[map.length - 1], offset: map[map.length - 2] - map[map.length - 3]};
+      var map$$1 = measure.maps ? measure.maps[measure.maps.length - 1] : measure.map;
+      end = {node: map$$1[map$$1.length - 1], offset: map$$1[map$$1.length - 2] - map$$1[map$$1.length - 3]};
     }
 
     if (!start || !end) {
@@ -15851,7 +15609,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   ContentEditableInput.prototype.focus = function () {
     if (this.cm.options.readOnly != "nocursor") {
-      if (!this.selectionInEditor() || document.activeElement != this.div)
+      if (!this.selectionInEditor())
         { this.showSelection(this.prepareSelection(), true); }
       this.div.focus();
     }
@@ -15892,7 +15650,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // Because Android doesn't allow us to actually detect backspace
     // presses in a sane way, this code checks for when that happens
     // and simulates a backspace press in this case.
-    if (android && chrome && this.cm.display.gutterSpecs.length && isInGutter(sel.anchorNode)) {
+    if (android && chrome && this.cm.options.gutters.length && isInGutter(sel.anchorNode)) {
       this.cm.triggerOnKeyDown({type: "keydown", keyCode: 8, preventDefault: Math.abs});
       this.blur();
       this.focus();
@@ -16081,11 +15839,11 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
           addText(cmText);
           return
         }
-        var markerID = node.getAttribute("cm-marker"), range;
+        var markerID = node.getAttribute("cm-marker"), range$$1;
         if (markerID) {
           var found = cm.findMarks(Pos(fromLine, 0), Pos(toLine + 1, 0), recognizeMarker(+markerID));
-          if (found.length && (range = found[0].find(0)))
-            { addText(getBetween(cm.doc, range.from, range.to).join(lineSep)); }
+          if (found.length && (range$$1 = found[0].find(0)))
+            { addText(getBetween(cm.doc, range$$1.from, range$$1.to).join(lineSep)); }
           return
         }
         if (node.getAttribute("contenteditable") == "false") { return }
@@ -16153,13 +15911,13 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
     function find(textNode, topNode, offset) {
       for (var i = -1; i < (maps ? maps.length : 0); i++) {
-        var map = i < 0 ? measure.map : maps[i];
-        for (var j = 0; j < map.length; j += 3) {
-          var curNode = map[j + 2];
+        var map$$1 = i < 0 ? measure.map : maps[i];
+        for (var j = 0; j < map$$1.length; j += 3) {
+          var curNode = map$$1[j + 2];
           if (curNode == textNode || curNode == topNode) {
             var line = lineNo(i < 0 ? lineView.line : lineView.rest[i]);
-            var ch = map[j] + offset;
-            if (offset < 0 || curNode != textNode) { ch = map[j + (offset ? 1 : 0)]; }
+            var ch = map$$1[j] + offset;
+            if (offset < 0 || curNode != textNode) { ch = map$$1[j + (offset ? 1 : 0)]; }
             return Pos(line, ch)
           }
         }
@@ -16291,15 +16049,6 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
     // The semihidden textarea that is focused when the editor is
     // focused, and receives input.
     this.textarea = this.wrapper.firstChild;
-  };
-
-  TextareaInput.prototype.screenReaderLabelChanged = function (label) {
-    // Label for screenreaders, accessibility
-    if(label) {
-      this.textarea.setAttribute('aria-label', label);
-    } else {
-      this.textarea.removeAttribute('aria-label');
-    }
   };
 
   TextareaInput.prototype.prepareSelection = function () {
@@ -16593,7 +16342,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
         textarea.style.display = "";
         if (textarea.form) {
           off(textarea.form, "submit", save);
-          if (!options.leaveSubmitMethodAlone && typeof textarea.form.submit == "function")
+          if (typeof textarea.form.submit == "function")
             { textarea.form.submit = realSubmit; }
         }
       };
@@ -16692,7 +16441,7 @@ CodeMirror.overlayMode = function(base, overlay, combine) {
 
   addLegacyProps(CodeMirror);
 
-  CodeMirror.version = "5.55.0";
+  CodeMirror.version = "5.45.0";
 
   return CodeMirror;
 
@@ -16892,9 +16641,6 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
   if (modeCfg.fencedCodeBlockHighlighting === undefined)
     modeCfg.fencedCodeBlockHighlighting = true;
 
-  if (modeCfg.fencedCodeBlockDefaultMode === undefined)
-    modeCfg.fencedCodeBlockDefaultMode = 'text/plain';
-
   if (modeCfg.xml === undefined)
     modeCfg.xml = true;
 
@@ -16934,9 +16680,9 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
   ,   listRE = /^(?:[*\-+]|^[0-9]+([.)]))\s+/
   ,   taskListRE = /^\[(x| )\](?=\s)/i // Must follow listRE
   ,   atxHeaderRE = modeCfg.allowAtxHeaderWithoutSpace ? /^(#+)/ : /^(#+)(?: |$)/
-  ,   setextHeaderRE = /^ {0,3}(?:\={1,}|-{2,})\s*$/
+  ,   setextHeaderRE = /^ *(?:\={1,}|-{1,})\s*$/
   ,   textRE = /^[^#!\[\]*_\\<>` "'(~:]+/
-  ,   fencedCodeRE = /^(~~~+|```+)[ \t]*([\w\/+#-]*)[^\n`]*$/
+  ,   fencedCodeRE = /^(~~~+|```+)[ \t]*([\w+#-]*)[^\n`]*$/
   ,   linkDefRE = /^\s*\[[^\]]+?\]:.*$/ // naive link-definition
   ,   punctuation = /[!"#$%&'()*+,\-.\/:;<=>?@\[\\\]^_`{|}~\xA1\xA7\xAB\xB6\xB7\xBB\xBF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E42\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]|\uD800[\uDD00-\uDD02\uDF9F\uDFD0]|\uD801\uDD6F|\uD802[\uDC57\uDD1F\uDD3F\uDE50-\uDE58\uDE7F\uDEF0-\uDEF6\uDF39-\uDF3F\uDF99-\uDF9C]|\uD804[\uDC47-\uDC4D\uDCBB\uDCBC\uDCBE-\uDCC1\uDD40-\uDD43\uDD74\uDD75\uDDC5-\uDDC9\uDDCD\uDDDB\uDDDD-\uDDDF\uDE38-\uDE3D\uDEA9]|\uD805[\uDCC6\uDDC1-\uDDD7\uDE41-\uDE43\uDF3C-\uDF3E]|\uD809[\uDC70-\uDC74]|\uD81A[\uDE6E\uDE6F\uDEF5\uDF37-\uDF3B\uDF44]|\uD82F\uDC9F|\uD836[\uDE87-\uDE8B]/
   ,   expandedTab = "    " // CommonMark specifies tab as 4 spaces
@@ -17009,6 +16755,12 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
     if (state.indentationDiff === null) {
       state.indentationDiff = state.indentation;
       if (prevLineIsList) {
+        // Reset inline styles which shouldn't propagate aross list items
+        state.em = false;
+        state.strong = false;
+        state.code = false;
+        state.strikethrough = false;
+
         state.list = null;
         // While this list item's marker's indentation is less than the deepest
         //  list item's content's indentation,pop the deepest list item
@@ -17067,11 +16819,6 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
 
       // Add this list item's content's indentation to the stack
       state.listStack.push(state.indentation);
-      // Reset inline styles which shouldn't propagate aross list items
-      state.em = false;
-      state.strong = false;
-      state.code = false;
-      state.strikethrough = false;
 
       if (modeCfg.taskLists && stream.match(taskListRE, false)) {
         state.taskList = true;
@@ -17083,7 +16830,7 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
       state.quote = 0;
       state.fencedEndRE = new RegExp(match[1] + "+ *$");
       // try switching mode
-      state.localMode = modeCfg.fencedCodeBlockHighlighting && getMode(match[2] || modeCfg.fencedCodeBlockDefaultMode );
+      state.localMode = modeCfg.fencedCodeBlockHighlighting && getMode(match[2]);
       if (state.localMode) state.localState = CodeMirror.startState(state.localMode);
       state.f = state.block = local;
       if (modeCfg.highlightFormatting) state.formatting = "code-block";
@@ -17758,7 +17505,7 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
     {name: "C", mime: "text/x-csrc", mode: "clike", ext: ["c", "h", "ino"]},
     {name: "C++", mime: "text/x-c++src", mode: "clike", ext: ["cpp", "c++", "cc", "cxx", "hpp", "h++", "hh", "hxx"], alias: ["cpp"]},
     {name: "Cobol", mime: "text/x-cobol", mode: "cobol", ext: ["cob", "cpy"]},
-    {name: "C#", mime: "text/x-csharp", mode: "clike", ext: ["cs"], alias: ["csharp", "cs"]},
+    {name: "C#", mime: "text/x-csharp", mode: "clike", ext: ["cs"], alias: ["csharp"]},
     {name: "Clojure", mime: "text/x-clojure", mode: "clojure", ext: ["clj", "cljc", "cljx"]},
     {name: "ClojureScript", mime: "text/x-clojurescript", mode: "clojure", ext: ["cljs"]},
     {name: "Closure Stylesheets (GSS)", mime: "text/x-gss", mode: "css", ext: ["gss"]},
@@ -17822,7 +17569,7 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
     {name: "Markdown", mime: "text/x-markdown", mode: "markdown", ext: ["markdown", "md", "mkd"]},
     {name: "mIRC", mime: "text/mirc", mode: "mirc"},
     {name: "MariaDB SQL", mime: "text/x-mariadb", mode: "sql"},
-    {name: "Mathematica", mime: "text/x-mathematica", mode: "mathematica", ext: ["m", "nb", "wl", "wls"]},
+    {name: "Mathematica", mime: "text/x-mathematica", mode: "mathematica", ext: ["m", "nb"]},
     {name: "Modelica", mime: "text/x-modelica", mode: "modelica", ext: ["mo"]},
     {name: "MUMPS", mime: "text/x-mumps", mode: "mumps", ext: ["mps"]},
     {name: "MS SQL", mime: "text/x-mssql", mode: "sql"},
@@ -17832,8 +17579,7 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
     {name: "NSIS", mime: "text/x-nsis", mode: "nsis", ext: ["nsh", "nsi"]},
     {name: "NTriples", mimes: ["application/n-triples", "application/n-quads", "text/n-triples"],
      mode: "ntriples", ext: ["nt", "nq"]},
-    {name: "Objective-C", mime: "text/x-objectivec", mode: "clike", ext: ["m"], alias: ["objective-c", "objc"]},
-    {name: "Objective-C++", mime: "text/x-objectivec++", mode: "clike", ext: ["mm"], alias: ["objective-c++", "objc++"]},
+    {name: "Objective-C", mime: "text/x-objectivec", mode: "clike", ext: ["m", "mm"], alias: ["objective-c", "objc"]},
     {name: "OCaml", mime: "text/x-ocaml", mode: "mllike", ext: ["ml", "mli", "mll", "mly"]},
     {name: "Octave", mime: "text/x-octave", mode: "octave", ext: ["m"]},
     {name: "Oz", mime: "text/x-oz", mode: "oz", ext: ["oz"]},
@@ -17844,7 +17590,6 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
     {name: "Pig", mime: "text/x-pig", mode: "pig", ext: ["pig"]},
     {name: "Plain Text", mime: "text/plain", mode: "null", ext: ["txt", "text", "conf", "def", "list", "log"]},
     {name: "PLSQL", mime: "text/x-plsql", mode: "sql", ext: ["pls"]},
-    {name: "PostgreSQL", mime: "text/x-pgsql", mode: "sql"},
     {name: "PowerShell", mime: "application/x-powershell", mode: "powershell", ext: ["ps1", "psd1", "psm1"]},
     {name: "Properties files", mime: "text/x-properties", mode: "properties", ext: ["properties", "ini", "in"], alias: ["ini", "properties"]},
     {name: "ProtoBuf", mime: "text/x-protobuf", mode: "protobuf", ext: ["proto"]},
@@ -17882,7 +17627,7 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
     {name: "SystemVerilog", mime: "text/x-systemverilog", mode: "verilog", ext: ["v", "sv", "svh"]},
     {name: "Tcl", mime: "text/x-tcl", mode: "tcl", ext: ["tcl"]},
     {name: "Textile", mime: "text/x-textile", mode: "textile", ext: ["textile"]},
-    {name: "TiddlyWiki", mime: "text/x-tiddlywiki", mode: "tiddlywiki"},
+    {name: "TiddlyWiki ", mime: "text/x-tiddlywiki", mode: "tiddlywiki"},
     {name: "Tiki wiki", mime: "text/tiki", mode: "tiki"},
     {name: "TOML", mime: "text/x-toml", mode: "toml", ext: ["toml"]},
     {name: "Tornado", mime: "text/x-tornado", mode: "tornado"},
@@ -17928,7 +17673,6 @@ CodeMirror.defineMIME("text/x-markdown", "markdown");
   };
 
   CodeMirror.findModeByExtension = function(ext) {
-    ext = ext.toLowerCase();
     for (var i = 0; i < CodeMirror.modeInfo.length; i++) {
       var info = CodeMirror.modeInfo[i];
       if (info.ext) for (var j = 0; j < info.ext.length; j++)
@@ -18356,17 +18100,6 @@ CodeMirror.defineMode("xml", function(editorConf, config_) {
     skipAttribute: function(state) {
       if (state.state == attrValueState)
         state.state = attrState
-    },
-
-    xmlCurrentTag: function(state) {
-      return state.tagName ? {name: state.tagName, close: state.type == "closeTag"} : null
-    },
-
-    xmlCurrentContext: function(state) {
-      var context = []
-      for (var cx = state.context; cx; cx = cx.prev)
-        if (cx.tagName) context.push(cx.tagName)
-      return context.reverse()
     }
   };
 });
@@ -18377,6 +18110,1785 @@ if (!CodeMirror.mimeModes.hasOwnProperty("text/html"))
   CodeMirror.defineMIME("text/html", {name: "xml", htmlMode: true});
 
 });
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/a-function.js":
+/*!******************************************************!*\
+  !*** ./node_modules/core-js/internals/a-function.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = function (it) {
+  if (typeof it != 'function') {
+    throw TypeError(String(it) + ' is not a function');
+  } return it;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/a-possible-prototype.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/core-js/internals/a-possible-prototype.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+
+module.exports = function (it) {
+  if (!isObject(it) && it !== null) {
+    throw TypeError("Can't set " + String(it) + ' as a prototype');
+  } return it;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/add-to-unscopables.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/core-js/internals/add-to-unscopables.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var wellKnownSymbol = __webpack_require__(/*! ../internals/well-known-symbol */ "./node_modules/core-js/internals/well-known-symbol.js");
+var create = __webpack_require__(/*! ../internals/object-create */ "./node_modules/core-js/internals/object-create.js");
+var definePropertyModule = __webpack_require__(/*! ../internals/object-define-property */ "./node_modules/core-js/internals/object-define-property.js");
+
+var UNSCOPABLES = wellKnownSymbol('unscopables');
+var ArrayPrototype = Array.prototype;
+
+// Array.prototype[@@unscopables]
+// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+if (ArrayPrototype[UNSCOPABLES] == undefined) {
+  definePropertyModule.f(ArrayPrototype, UNSCOPABLES, {
+    configurable: true,
+    value: create(null)
+  });
+}
+
+// add a key to Array.prototype[@@unscopables]
+module.exports = function (key) {
+  ArrayPrototype[UNSCOPABLES][key] = true;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/an-object.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/core-js/internals/an-object.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+
+module.exports = function (it) {
+  if (!isObject(it)) {
+    throw TypeError(String(it) + ' is not an object');
+  } return it;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/array-includes.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/core-js/internals/array-includes.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var toIndexedObject = __webpack_require__(/*! ../internals/to-indexed-object */ "./node_modules/core-js/internals/to-indexed-object.js");
+var toLength = __webpack_require__(/*! ../internals/to-length */ "./node_modules/core-js/internals/to-length.js");
+var toAbsoluteIndex = __webpack_require__(/*! ../internals/to-absolute-index */ "./node_modules/core-js/internals/to-absolute-index.js");
+
+// `Array.prototype.{ indexOf, includes }` methods implementation
+var createMethod = function (IS_INCLUDES) {
+  return function ($this, el, fromIndex) {
+    var O = toIndexedObject($this);
+    var length = toLength(O.length);
+    var index = toAbsoluteIndex(fromIndex, length);
+    var value;
+    // Array#includes uses SameValueZero equality algorithm
+    // eslint-disable-next-line no-self-compare
+    if (IS_INCLUDES && el != el) while (length > index) {
+      value = O[index++];
+      // eslint-disable-next-line no-self-compare
+      if (value != value) return true;
+    // Array#indexOf ignores holes, Array#includes - not
+    } else for (;length > index; index++) {
+      if ((IS_INCLUDES || index in O) && O[index] === el) return IS_INCLUDES || index || 0;
+    } return !IS_INCLUDES && -1;
+  };
+};
+
+module.exports = {
+  // `Array.prototype.includes` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.includes
+  includes: createMethod(true),
+  // `Array.prototype.indexOf` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.indexof
+  indexOf: createMethod(false)
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/array-iteration.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/core-js/internals/array-iteration.js ***!
+  \***********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var bind = __webpack_require__(/*! ../internals/function-bind-context */ "./node_modules/core-js/internals/function-bind-context.js");
+var IndexedObject = __webpack_require__(/*! ../internals/indexed-object */ "./node_modules/core-js/internals/indexed-object.js");
+var toObject = __webpack_require__(/*! ../internals/to-object */ "./node_modules/core-js/internals/to-object.js");
+var toLength = __webpack_require__(/*! ../internals/to-length */ "./node_modules/core-js/internals/to-length.js");
+var arraySpeciesCreate = __webpack_require__(/*! ../internals/array-species-create */ "./node_modules/core-js/internals/array-species-create.js");
+
+var push = [].push;
+
+// `Array.prototype.{ forEach, map, filter, some, every, find, findIndex }` methods implementation
+var createMethod = function (TYPE) {
+  var IS_MAP = TYPE == 1;
+  var IS_FILTER = TYPE == 2;
+  var IS_SOME = TYPE == 3;
+  var IS_EVERY = TYPE == 4;
+  var IS_FIND_INDEX = TYPE == 6;
+  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
+  return function ($this, callbackfn, that, specificCreate) {
+    var O = toObject($this);
+    var self = IndexedObject(O);
+    var boundFunction = bind(callbackfn, that, 3);
+    var length = toLength(self.length);
+    var index = 0;
+    var create = specificCreate || arraySpeciesCreate;
+    var target = IS_MAP ? create($this, length) : IS_FILTER ? create($this, 0) : undefined;
+    var value, result;
+    for (;length > index; index++) if (NO_HOLES || index in self) {
+      value = self[index];
+      result = boundFunction(value, index, O);
+      if (TYPE) {
+        if (IS_MAP) target[index] = result; // map
+        else if (result) switch (TYPE) {
+          case 3: return true;              // some
+          case 5: return value;             // find
+          case 6: return index;             // findIndex
+          case 2: push.call(target, value); // filter
+        } else if (IS_EVERY) return false;  // every
+      }
+    }
+    return IS_FIND_INDEX ? -1 : IS_SOME || IS_EVERY ? IS_EVERY : target;
+  };
+};
+
+module.exports = {
+  // `Array.prototype.forEach` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+  forEach: createMethod(0),
+  // `Array.prototype.map` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.map
+  map: createMethod(1),
+  // `Array.prototype.filter` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.filter
+  filter: createMethod(2),
+  // `Array.prototype.some` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.some
+  some: createMethod(3),
+  // `Array.prototype.every` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.every
+  every: createMethod(4),
+  // `Array.prototype.find` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.find
+  find: createMethod(5),
+  // `Array.prototype.findIndex` method
+  // https://tc39.github.io/ecma262/#sec-array.prototype.findIndex
+  findIndex: createMethod(6)
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/array-method-uses-to-length.js":
+/*!***********************************************************************!*\
+  !*** ./node_modules/core-js/internals/array-method-uses-to-length.js ***!
+  \***********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+
+var defineProperty = Object.defineProperty;
+var cache = {};
+
+var thrower = function (it) { throw it; };
+
+module.exports = function (METHOD_NAME, options) {
+  if (has(cache, METHOD_NAME)) return cache[METHOD_NAME];
+  if (!options) options = {};
+  var method = [][METHOD_NAME];
+  var ACCESSORS = has(options, 'ACCESSORS') ? options.ACCESSORS : false;
+  var argument0 = has(options, 0) ? options[0] : thrower;
+  var argument1 = has(options, 1) ? options[1] : undefined;
+
+  return cache[METHOD_NAME] = !!method && !fails(function () {
+    if (ACCESSORS && !DESCRIPTORS) return true;
+    var O = { length: -1 };
+
+    if (ACCESSORS) defineProperty(O, 1, { enumerable: true, get: thrower });
+    else O[1] = 1;
+
+    method.call(O, argument0, argument1);
+  });
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/array-species-create.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/core-js/internals/array-species-create.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+var isArray = __webpack_require__(/*! ../internals/is-array */ "./node_modules/core-js/internals/is-array.js");
+var wellKnownSymbol = __webpack_require__(/*! ../internals/well-known-symbol */ "./node_modules/core-js/internals/well-known-symbol.js");
+
+var SPECIES = wellKnownSymbol('species');
+
+// `ArraySpeciesCreate` abstract operation
+// https://tc39.github.io/ecma262/#sec-arrayspeciescreate
+module.exports = function (originalArray, length) {
+  var C;
+  if (isArray(originalArray)) {
+    C = originalArray.constructor;
+    // cross-realm fallback
+    if (typeof C == 'function' && (C === Array || isArray(C.prototype))) C = undefined;
+    else if (isObject(C)) {
+      C = C[SPECIES];
+      if (C === null) C = undefined;
+    }
+  } return new (C === undefined ? Array : C)(length === 0 ? 0 : length);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/classof-raw.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/classof-raw.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var toString = {}.toString;
+
+module.exports = function (it) {
+  return toString.call(it).slice(8, -1);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/copy-constructor-properties.js":
+/*!***********************************************************************!*\
+  !*** ./node_modules/core-js/internals/copy-constructor-properties.js ***!
+  \***********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var ownKeys = __webpack_require__(/*! ../internals/own-keys */ "./node_modules/core-js/internals/own-keys.js");
+var getOwnPropertyDescriptorModule = __webpack_require__(/*! ../internals/object-get-own-property-descriptor */ "./node_modules/core-js/internals/object-get-own-property-descriptor.js");
+var definePropertyModule = __webpack_require__(/*! ../internals/object-define-property */ "./node_modules/core-js/internals/object-define-property.js");
+
+module.exports = function (target, source) {
+  var keys = ownKeys(source);
+  var defineProperty = definePropertyModule.f;
+  var getOwnPropertyDescriptor = getOwnPropertyDescriptorModule.f;
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!has(target, key)) defineProperty(target, key, getOwnPropertyDescriptor(source, key));
+  }
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/create-non-enumerable-property.js":
+/*!**************************************************************************!*\
+  !*** ./node_modules/core-js/internals/create-non-enumerable-property.js ***!
+  \**************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var definePropertyModule = __webpack_require__(/*! ../internals/object-define-property */ "./node_modules/core-js/internals/object-define-property.js");
+var createPropertyDescriptor = __webpack_require__(/*! ../internals/create-property-descriptor */ "./node_modules/core-js/internals/create-property-descriptor.js");
+
+module.exports = DESCRIPTORS ? function (object, key, value) {
+  return definePropertyModule.f(object, key, createPropertyDescriptor(1, value));
+} : function (object, key, value) {
+  object[key] = value;
+  return object;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/create-property-descriptor.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/core-js/internals/create-property-descriptor.js ***!
+  \**********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = function (bitmap, value) {
+  return {
+    enumerable: !(bitmap & 1),
+    configurable: !(bitmap & 2),
+    writable: !(bitmap & 4),
+    value: value
+  };
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/descriptors.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/descriptors.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+
+// Thank's IE8 for his funny defineProperty
+module.exports = !fails(function () {
+  return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] != 7;
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/document-create-element.js":
+/*!*******************************************************************!*\
+  !*** ./node_modules/core-js/internals/document-create-element.js ***!
+  \*******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+
+var document = global.document;
+// typeof document.createElement is 'object' in old IE
+var EXISTS = isObject(document) && isObject(document.createElement);
+
+module.exports = function (it) {
+  return EXISTS ? document.createElement(it) : {};
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/enum-bug-keys.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/core-js/internals/enum-bug-keys.js ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// IE8- don't enum bug keys
+module.exports = [
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf'
+];
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/export.js":
+/*!**************************************************!*\
+  !*** ./node_modules/core-js/internals/export.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var getOwnPropertyDescriptor = __webpack_require__(/*! ../internals/object-get-own-property-descriptor */ "./node_modules/core-js/internals/object-get-own-property-descriptor.js").f;
+var createNonEnumerableProperty = __webpack_require__(/*! ../internals/create-non-enumerable-property */ "./node_modules/core-js/internals/create-non-enumerable-property.js");
+var redefine = __webpack_require__(/*! ../internals/redefine */ "./node_modules/core-js/internals/redefine.js");
+var setGlobal = __webpack_require__(/*! ../internals/set-global */ "./node_modules/core-js/internals/set-global.js");
+var copyConstructorProperties = __webpack_require__(/*! ../internals/copy-constructor-properties */ "./node_modules/core-js/internals/copy-constructor-properties.js");
+var isForced = __webpack_require__(/*! ../internals/is-forced */ "./node_modules/core-js/internals/is-forced.js");
+
+/*
+  options.target      - name of the target object
+  options.global      - target is the global object
+  options.stat        - export as static methods of target
+  options.proto       - export as prototype methods of target
+  options.real        - real prototype method for the `pure` version
+  options.forced      - export even if the native feature is available
+  options.bind        - bind methods to the target, required for the `pure` version
+  options.wrap        - wrap constructors to preventing global pollution, required for the `pure` version
+  options.unsafe      - use the simple assignment of property instead of delete + defineProperty
+  options.sham        - add a flag to not completely full polyfills
+  options.enumerable  - export as enumerable property
+  options.noTargetGet - prevent calling a getter on target
+*/
+module.exports = function (options, source) {
+  var TARGET = options.target;
+  var GLOBAL = options.global;
+  var STATIC = options.stat;
+  var FORCED, target, key, targetProperty, sourceProperty, descriptor;
+  if (GLOBAL) {
+    target = global;
+  } else if (STATIC) {
+    target = global[TARGET] || setGlobal(TARGET, {});
+  } else {
+    target = (global[TARGET] || {}).prototype;
+  }
+  if (target) for (key in source) {
+    sourceProperty = source[key];
+    if (options.noTargetGet) {
+      descriptor = getOwnPropertyDescriptor(target, key);
+      targetProperty = descriptor && descriptor.value;
+    } else targetProperty = target[key];
+    FORCED = isForced(GLOBAL ? key : TARGET + (STATIC ? '.' : '#') + key, options.forced);
+    // contained in target
+    if (!FORCED && targetProperty !== undefined) {
+      if (typeof sourceProperty === typeof targetProperty) continue;
+      copyConstructorProperties(sourceProperty, targetProperty);
+    }
+    // add a flag to not completely full polyfills
+    if (options.sham || (targetProperty && targetProperty.sham)) {
+      createNonEnumerableProperty(sourceProperty, 'sham', true);
+    }
+    // extend global
+    redefine(target, key, sourceProperty, options);
+  }
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/fails.js":
+/*!*************************************************!*\
+  !*** ./node_modules/core-js/internals/fails.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = function (exec) {
+  try {
+    return !!exec();
+  } catch (error) {
+    return true;
+  }
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/function-bind-context.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/core-js/internals/function-bind-context.js ***!
+  \*****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var aFunction = __webpack_require__(/*! ../internals/a-function */ "./node_modules/core-js/internals/a-function.js");
+
+// optional / simple context binding
+module.exports = function (fn, that, length) {
+  aFunction(fn);
+  if (that === undefined) return fn;
+  switch (length) {
+    case 0: return function () {
+      return fn.call(that);
+    };
+    case 1: return function (a) {
+      return fn.call(that, a);
+    };
+    case 2: return function (a, b) {
+      return fn.call(that, a, b);
+    };
+    case 3: return function (a, b, c) {
+      return fn.call(that, a, b, c);
+    };
+  }
+  return function (/* ...args */) {
+    return fn.apply(that, arguments);
+  };
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/get-built-in.js":
+/*!********************************************************!*\
+  !*** ./node_modules/core-js/internals/get-built-in.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var path = __webpack_require__(/*! ../internals/path */ "./node_modules/core-js/internals/path.js");
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+
+var aFunction = function (variable) {
+  return typeof variable == 'function' ? variable : undefined;
+};
+
+module.exports = function (namespace, method) {
+  return arguments.length < 2 ? aFunction(path[namespace]) || aFunction(global[namespace])
+    : path[namespace] && path[namespace][method] || global[namespace] && global[namespace][method];
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/global.js":
+/*!**************************************************!*\
+  !*** ./node_modules/core-js/internals/global.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {var check = function (it) {
+  return it && it.Math == Math && it;
+};
+
+// https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
+module.exports =
+  // eslint-disable-next-line no-undef
+  check(typeof globalThis == 'object' && globalThis) ||
+  check(typeof window == 'object' && window) ||
+  check(typeof self == 'object' && self) ||
+  check(typeof global == 'object' && global) ||
+  // eslint-disable-next-line no-new-func
+  Function('return this')();
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/has.js":
+/*!***********************************************!*\
+  !*** ./node_modules/core-js/internals/has.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var hasOwnProperty = {}.hasOwnProperty;
+
+module.exports = function (it, key) {
+  return hasOwnProperty.call(it, key);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/hidden-keys.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/hidden-keys.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = {};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/html.js":
+/*!************************************************!*\
+  !*** ./node_modules/core-js/internals/html.js ***!
+  \************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var getBuiltIn = __webpack_require__(/*! ../internals/get-built-in */ "./node_modules/core-js/internals/get-built-in.js");
+
+module.exports = getBuiltIn('document', 'documentElement');
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/ie8-dom-define.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/core-js/internals/ie8-dom-define.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+var createElement = __webpack_require__(/*! ../internals/document-create-element */ "./node_modules/core-js/internals/document-create-element.js");
+
+// Thank's IE8 for his funny defineProperty
+module.exports = !DESCRIPTORS && !fails(function () {
+  return Object.defineProperty(createElement('div'), 'a', {
+    get: function () { return 7; }
+  }).a != 7;
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/indexed-object.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/core-js/internals/indexed-object.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+var classof = __webpack_require__(/*! ../internals/classof-raw */ "./node_modules/core-js/internals/classof-raw.js");
+
+var split = ''.split;
+
+// fallback for non-array-like ES3 and non-enumerable old V8 strings
+module.exports = fails(function () {
+  // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
+  // eslint-disable-next-line no-prototype-builtins
+  return !Object('z').propertyIsEnumerable(0);
+}) ? function (it) {
+  return classof(it) == 'String' ? split.call(it, '') : Object(it);
+} : Object;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/inherit-if-required.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/core-js/internals/inherit-if-required.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+var setPrototypeOf = __webpack_require__(/*! ../internals/object-set-prototype-of */ "./node_modules/core-js/internals/object-set-prototype-of.js");
+
+// makes subclassing work correct for wrapped built-ins
+module.exports = function ($this, dummy, Wrapper) {
+  var NewTarget, NewTargetPrototype;
+  if (
+    // it can work only with native `setPrototypeOf`
+    setPrototypeOf &&
+    // we haven't completely correct pre-ES6 way for getting `new.target`, so use this
+    typeof (NewTarget = dummy.constructor) == 'function' &&
+    NewTarget !== Wrapper &&
+    isObject(NewTargetPrototype = NewTarget.prototype) &&
+    NewTargetPrototype !== Wrapper.prototype
+  ) setPrototypeOf($this, NewTargetPrototype);
+  return $this;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/inspect-source.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/core-js/internals/inspect-source.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var store = __webpack_require__(/*! ../internals/shared-store */ "./node_modules/core-js/internals/shared-store.js");
+
+var functionToString = Function.toString;
+
+// this helper broken in `3.4.1-3.4.4`, so we can't use `shared` helper
+if (typeof store.inspectSource != 'function') {
+  store.inspectSource = function (it) {
+    return functionToString.call(it);
+  };
+}
+
+module.exports = store.inspectSource;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/internal-state.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/core-js/internals/internal-state.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var NATIVE_WEAK_MAP = __webpack_require__(/*! ../internals/native-weak-map */ "./node_modules/core-js/internals/native-weak-map.js");
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+var createNonEnumerableProperty = __webpack_require__(/*! ../internals/create-non-enumerable-property */ "./node_modules/core-js/internals/create-non-enumerable-property.js");
+var objectHas = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var sharedKey = __webpack_require__(/*! ../internals/shared-key */ "./node_modules/core-js/internals/shared-key.js");
+var hiddenKeys = __webpack_require__(/*! ../internals/hidden-keys */ "./node_modules/core-js/internals/hidden-keys.js");
+
+var WeakMap = global.WeakMap;
+var set, get, has;
+
+var enforce = function (it) {
+  return has(it) ? get(it) : set(it, {});
+};
+
+var getterFor = function (TYPE) {
+  return function (it) {
+    var state;
+    if (!isObject(it) || (state = get(it)).type !== TYPE) {
+      throw TypeError('Incompatible receiver, ' + TYPE + ' required');
+    } return state;
+  };
+};
+
+if (NATIVE_WEAK_MAP) {
+  var store = new WeakMap();
+  var wmget = store.get;
+  var wmhas = store.has;
+  var wmset = store.set;
+  set = function (it, metadata) {
+    wmset.call(store, it, metadata);
+    return metadata;
+  };
+  get = function (it) {
+    return wmget.call(store, it) || {};
+  };
+  has = function (it) {
+    return wmhas.call(store, it);
+  };
+} else {
+  var STATE = sharedKey('state');
+  hiddenKeys[STATE] = true;
+  set = function (it, metadata) {
+    createNonEnumerableProperty(it, STATE, metadata);
+    return metadata;
+  };
+  get = function (it) {
+    return objectHas(it, STATE) ? it[STATE] : {};
+  };
+  has = function (it) {
+    return objectHas(it, STATE);
+  };
+}
+
+module.exports = {
+  set: set,
+  get: get,
+  has: has,
+  enforce: enforce,
+  getterFor: getterFor
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/is-array.js":
+/*!****************************************************!*\
+  !*** ./node_modules/core-js/internals/is-array.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var classof = __webpack_require__(/*! ../internals/classof-raw */ "./node_modules/core-js/internals/classof-raw.js");
+
+// `IsArray` abstract operation
+// https://tc39.github.io/ecma262/#sec-isarray
+module.exports = Array.isArray || function isArray(arg) {
+  return classof(arg) == 'Array';
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/is-forced.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/core-js/internals/is-forced.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+
+var replacement = /#|\.prototype\./;
+
+var isForced = function (feature, detection) {
+  var value = data[normalize(feature)];
+  return value == POLYFILL ? true
+    : value == NATIVE ? false
+    : typeof detection == 'function' ? fails(detection)
+    : !!detection;
+};
+
+var normalize = isForced.normalize = function (string) {
+  return String(string).replace(replacement, '.').toLowerCase();
+};
+
+var data = isForced.data = {};
+var NATIVE = isForced.NATIVE = 'N';
+var POLYFILL = isForced.POLYFILL = 'P';
+
+module.exports = isForced;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/is-object.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/core-js/internals/is-object.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = function (it) {
+  return typeof it === 'object' ? it !== null : typeof it === 'function';
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/is-pure.js":
+/*!***************************************************!*\
+  !*** ./node_modules/core-js/internals/is-pure.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = false;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/native-symbol.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/core-js/internals/native-symbol.js ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+
+module.exports = !!Object.getOwnPropertySymbols && !fails(function () {
+  // Chrome 38 Symbol has incorrect toString conversion
+  // eslint-disable-next-line no-undef
+  return !String(Symbol());
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/native-weak-map.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/core-js/internals/native-weak-map.js ***!
+  \***********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var inspectSource = __webpack_require__(/*! ../internals/inspect-source */ "./node_modules/core-js/internals/inspect-source.js");
+
+var WeakMap = global.WeakMap;
+
+module.exports = typeof WeakMap === 'function' && /native code/.test(inspectSource(WeakMap));
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-create.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/core-js/internals/object-create.js ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var anObject = __webpack_require__(/*! ../internals/an-object */ "./node_modules/core-js/internals/an-object.js");
+var defineProperties = __webpack_require__(/*! ../internals/object-define-properties */ "./node_modules/core-js/internals/object-define-properties.js");
+var enumBugKeys = __webpack_require__(/*! ../internals/enum-bug-keys */ "./node_modules/core-js/internals/enum-bug-keys.js");
+var hiddenKeys = __webpack_require__(/*! ../internals/hidden-keys */ "./node_modules/core-js/internals/hidden-keys.js");
+var html = __webpack_require__(/*! ../internals/html */ "./node_modules/core-js/internals/html.js");
+var documentCreateElement = __webpack_require__(/*! ../internals/document-create-element */ "./node_modules/core-js/internals/document-create-element.js");
+var sharedKey = __webpack_require__(/*! ../internals/shared-key */ "./node_modules/core-js/internals/shared-key.js");
+
+var GT = '>';
+var LT = '<';
+var PROTOTYPE = 'prototype';
+var SCRIPT = 'script';
+var IE_PROTO = sharedKey('IE_PROTO');
+
+var EmptyConstructor = function () { /* empty */ };
+
+var scriptTag = function (content) {
+  return LT + SCRIPT + GT + content + LT + '/' + SCRIPT + GT;
+};
+
+// Create object with fake `null` prototype: use ActiveX Object with cleared prototype
+var NullProtoObjectViaActiveX = function (activeXDocument) {
+  activeXDocument.write(scriptTag(''));
+  activeXDocument.close();
+  var temp = activeXDocument.parentWindow.Object;
+  activeXDocument = null; // avoid memory leak
+  return temp;
+};
+
+// Create object with fake `null` prototype: use iframe Object with cleared prototype
+var NullProtoObjectViaIFrame = function () {
+  // Thrash, waste and sodomy: IE GC bug
+  var iframe = documentCreateElement('iframe');
+  var JS = 'java' + SCRIPT + ':';
+  var iframeDocument;
+  iframe.style.display = 'none';
+  html.appendChild(iframe);
+  // https://github.com/zloirock/core-js/issues/475
+  iframe.src = String(JS);
+  iframeDocument = iframe.contentWindow.document;
+  iframeDocument.open();
+  iframeDocument.write(scriptTag('document.F=Object'));
+  iframeDocument.close();
+  return iframeDocument.F;
+};
+
+// Check for document.domain and active x support
+// No need to use active x approach when document.domain is not set
+// see https://github.com/es-shims/es5-shim/issues/150
+// variation of https://github.com/kitcambridge/es5-shim/commit/4f738ac066346
+// avoid IE GC bug
+var activeXDocument;
+var NullProtoObject = function () {
+  try {
+    /* global ActiveXObject */
+    activeXDocument = document.domain && new ActiveXObject('htmlfile');
+  } catch (error) { /* ignore */ }
+  NullProtoObject = activeXDocument ? NullProtoObjectViaActiveX(activeXDocument) : NullProtoObjectViaIFrame();
+  var length = enumBugKeys.length;
+  while (length--) delete NullProtoObject[PROTOTYPE][enumBugKeys[length]];
+  return NullProtoObject();
+};
+
+hiddenKeys[IE_PROTO] = true;
+
+// `Object.create` method
+// https://tc39.github.io/ecma262/#sec-object.create
+module.exports = Object.create || function create(O, Properties) {
+  var result;
+  if (O !== null) {
+    EmptyConstructor[PROTOTYPE] = anObject(O);
+    result = new EmptyConstructor();
+    EmptyConstructor[PROTOTYPE] = null;
+    // add "__proto__" for Object.getPrototypeOf polyfill
+    result[IE_PROTO] = O;
+  } else result = NullProtoObject();
+  return Properties === undefined ? result : defineProperties(result, Properties);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-define-properties.js":
+/*!********************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-define-properties.js ***!
+  \********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var definePropertyModule = __webpack_require__(/*! ../internals/object-define-property */ "./node_modules/core-js/internals/object-define-property.js");
+var anObject = __webpack_require__(/*! ../internals/an-object */ "./node_modules/core-js/internals/an-object.js");
+var objectKeys = __webpack_require__(/*! ../internals/object-keys */ "./node_modules/core-js/internals/object-keys.js");
+
+// `Object.defineProperties` method
+// https://tc39.github.io/ecma262/#sec-object.defineproperties
+module.exports = DESCRIPTORS ? Object.defineProperties : function defineProperties(O, Properties) {
+  anObject(O);
+  var keys = objectKeys(Properties);
+  var length = keys.length;
+  var index = 0;
+  var key;
+  while (length > index) definePropertyModule.f(O, key = keys[index++], Properties[key]);
+  return O;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-define-property.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-define-property.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var IE8_DOM_DEFINE = __webpack_require__(/*! ../internals/ie8-dom-define */ "./node_modules/core-js/internals/ie8-dom-define.js");
+var anObject = __webpack_require__(/*! ../internals/an-object */ "./node_modules/core-js/internals/an-object.js");
+var toPrimitive = __webpack_require__(/*! ../internals/to-primitive */ "./node_modules/core-js/internals/to-primitive.js");
+
+var nativeDefineProperty = Object.defineProperty;
+
+// `Object.defineProperty` method
+// https://tc39.github.io/ecma262/#sec-object.defineproperty
+exports.f = DESCRIPTORS ? nativeDefineProperty : function defineProperty(O, P, Attributes) {
+  anObject(O);
+  P = toPrimitive(P, true);
+  anObject(Attributes);
+  if (IE8_DOM_DEFINE) try {
+    return nativeDefineProperty(O, P, Attributes);
+  } catch (error) { /* empty */ }
+  if ('get' in Attributes || 'set' in Attributes) throw TypeError('Accessors not supported');
+  if ('value' in Attributes) O[P] = Attributes.value;
+  return O;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-get-own-property-descriptor.js":
+/*!******************************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-get-own-property-descriptor.js ***!
+  \******************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var propertyIsEnumerableModule = __webpack_require__(/*! ../internals/object-property-is-enumerable */ "./node_modules/core-js/internals/object-property-is-enumerable.js");
+var createPropertyDescriptor = __webpack_require__(/*! ../internals/create-property-descriptor */ "./node_modules/core-js/internals/create-property-descriptor.js");
+var toIndexedObject = __webpack_require__(/*! ../internals/to-indexed-object */ "./node_modules/core-js/internals/to-indexed-object.js");
+var toPrimitive = __webpack_require__(/*! ../internals/to-primitive */ "./node_modules/core-js/internals/to-primitive.js");
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var IE8_DOM_DEFINE = __webpack_require__(/*! ../internals/ie8-dom-define */ "./node_modules/core-js/internals/ie8-dom-define.js");
+
+var nativeGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+// `Object.getOwnPropertyDescriptor` method
+// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptor
+exports.f = DESCRIPTORS ? nativeGetOwnPropertyDescriptor : function getOwnPropertyDescriptor(O, P) {
+  O = toIndexedObject(O);
+  P = toPrimitive(P, true);
+  if (IE8_DOM_DEFINE) try {
+    return nativeGetOwnPropertyDescriptor(O, P);
+  } catch (error) { /* empty */ }
+  if (has(O, P)) return createPropertyDescriptor(!propertyIsEnumerableModule.f.call(O, P), O[P]);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-get-own-property-names.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-get-own-property-names.js ***!
+  \*************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var internalObjectKeys = __webpack_require__(/*! ../internals/object-keys-internal */ "./node_modules/core-js/internals/object-keys-internal.js");
+var enumBugKeys = __webpack_require__(/*! ../internals/enum-bug-keys */ "./node_modules/core-js/internals/enum-bug-keys.js");
+
+var hiddenKeys = enumBugKeys.concat('length', 'prototype');
+
+// `Object.getOwnPropertyNames` method
+// https://tc39.github.io/ecma262/#sec-object.getownpropertynames
+exports.f = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
+  return internalObjectKeys(O, hiddenKeys);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-get-own-property-symbols.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-get-own-property-symbols.js ***!
+  \***************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+exports.f = Object.getOwnPropertySymbols;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-keys-internal.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-keys-internal.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var toIndexedObject = __webpack_require__(/*! ../internals/to-indexed-object */ "./node_modules/core-js/internals/to-indexed-object.js");
+var indexOf = __webpack_require__(/*! ../internals/array-includes */ "./node_modules/core-js/internals/array-includes.js").indexOf;
+var hiddenKeys = __webpack_require__(/*! ../internals/hidden-keys */ "./node_modules/core-js/internals/hidden-keys.js");
+
+module.exports = function (object, names) {
+  var O = toIndexedObject(object);
+  var i = 0;
+  var result = [];
+  var key;
+  for (key in O) !has(hiddenKeys, key) && has(O, key) && result.push(key);
+  // Don't enum bug & hidden keys
+  while (names.length > i) if (has(O, key = names[i++])) {
+    ~indexOf(result, key) || result.push(key);
+  }
+  return result;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-keys.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/object-keys.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var internalObjectKeys = __webpack_require__(/*! ../internals/object-keys-internal */ "./node_modules/core-js/internals/object-keys-internal.js");
+var enumBugKeys = __webpack_require__(/*! ../internals/enum-bug-keys */ "./node_modules/core-js/internals/enum-bug-keys.js");
+
+// `Object.keys` method
+// https://tc39.github.io/ecma262/#sec-object.keys
+module.exports = Object.keys || function keys(O) {
+  return internalObjectKeys(O, enumBugKeys);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-property-is-enumerable.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-property-is-enumerable.js ***!
+  \*************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var nativePropertyIsEnumerable = {}.propertyIsEnumerable;
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+// Nashorn ~ JDK8 bug
+var NASHORN_BUG = getOwnPropertyDescriptor && !nativePropertyIsEnumerable.call({ 1: 2 }, 1);
+
+// `Object.prototype.propertyIsEnumerable` method implementation
+// https://tc39.github.io/ecma262/#sec-object.prototype.propertyisenumerable
+exports.f = NASHORN_BUG ? function propertyIsEnumerable(V) {
+  var descriptor = getOwnPropertyDescriptor(this, V);
+  return !!descriptor && descriptor.enumerable;
+} : nativePropertyIsEnumerable;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/object-set-prototype-of.js":
+/*!*******************************************************************!*\
+  !*** ./node_modules/core-js/internals/object-set-prototype-of.js ***!
+  \*******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var anObject = __webpack_require__(/*! ../internals/an-object */ "./node_modules/core-js/internals/an-object.js");
+var aPossiblePrototype = __webpack_require__(/*! ../internals/a-possible-prototype */ "./node_modules/core-js/internals/a-possible-prototype.js");
+
+// `Object.setPrototypeOf` method
+// https://tc39.github.io/ecma262/#sec-object.setprototypeof
+// Works with __proto__ only. Old v8 can't work with null proto objects.
+/* eslint-disable no-proto */
+module.exports = Object.setPrototypeOf || ('__proto__' in {} ? function () {
+  var CORRECT_SETTER = false;
+  var test = {};
+  var setter;
+  try {
+    setter = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').set;
+    setter.call(test, []);
+    CORRECT_SETTER = test instanceof Array;
+  } catch (error) { /* empty */ }
+  return function setPrototypeOf(O, proto) {
+    anObject(O);
+    aPossiblePrototype(proto);
+    if (CORRECT_SETTER) setter.call(O, proto);
+    else O.__proto__ = proto;
+    return O;
+  };
+}() : undefined);
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/own-keys.js":
+/*!****************************************************!*\
+  !*** ./node_modules/core-js/internals/own-keys.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var getBuiltIn = __webpack_require__(/*! ../internals/get-built-in */ "./node_modules/core-js/internals/get-built-in.js");
+var getOwnPropertyNamesModule = __webpack_require__(/*! ../internals/object-get-own-property-names */ "./node_modules/core-js/internals/object-get-own-property-names.js");
+var getOwnPropertySymbolsModule = __webpack_require__(/*! ../internals/object-get-own-property-symbols */ "./node_modules/core-js/internals/object-get-own-property-symbols.js");
+var anObject = __webpack_require__(/*! ../internals/an-object */ "./node_modules/core-js/internals/an-object.js");
+
+// all object keys, includes non-enumerable and symbols
+module.exports = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
+  var keys = getOwnPropertyNamesModule.f(anObject(it));
+  var getOwnPropertySymbols = getOwnPropertySymbolsModule.f;
+  return getOwnPropertySymbols ? keys.concat(getOwnPropertySymbols(it)) : keys;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/path.js":
+/*!************************************************!*\
+  !*** ./node_modules/core-js/internals/path.js ***!
+  \************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+
+module.exports = global;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/redefine.js":
+/*!****************************************************!*\
+  !*** ./node_modules/core-js/internals/redefine.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var createNonEnumerableProperty = __webpack_require__(/*! ../internals/create-non-enumerable-property */ "./node_modules/core-js/internals/create-non-enumerable-property.js");
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var setGlobal = __webpack_require__(/*! ../internals/set-global */ "./node_modules/core-js/internals/set-global.js");
+var inspectSource = __webpack_require__(/*! ../internals/inspect-source */ "./node_modules/core-js/internals/inspect-source.js");
+var InternalStateModule = __webpack_require__(/*! ../internals/internal-state */ "./node_modules/core-js/internals/internal-state.js");
+
+var getInternalState = InternalStateModule.get;
+var enforceInternalState = InternalStateModule.enforce;
+var TEMPLATE = String(String).split('String');
+
+(module.exports = function (O, key, value, options) {
+  var unsafe = options ? !!options.unsafe : false;
+  var simple = options ? !!options.enumerable : false;
+  var noTargetGet = options ? !!options.noTargetGet : false;
+  if (typeof value == 'function') {
+    if (typeof key == 'string' && !has(value, 'name')) createNonEnumerableProperty(value, 'name', key);
+    enforceInternalState(value).source = TEMPLATE.join(typeof key == 'string' ? key : '');
+  }
+  if (O === global) {
+    if (simple) O[key] = value;
+    else setGlobal(key, value);
+    return;
+  } else if (!unsafe) {
+    delete O[key];
+  } else if (!noTargetGet && O[key]) {
+    simple = true;
+  }
+  if (simple) O[key] = value;
+  else createNonEnumerableProperty(O, key, value);
+// add fake Function#toString for correct work wrapped methods / constructors with methods like LoDash isNative
+})(Function.prototype, 'toString', function toString() {
+  return typeof this == 'function' && getInternalState(this).source || inspectSource(this);
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/require-object-coercible.js":
+/*!********************************************************************!*\
+  !*** ./node_modules/core-js/internals/require-object-coercible.js ***!
+  \********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// `RequireObjectCoercible` abstract operation
+// https://tc39.github.io/ecma262/#sec-requireobjectcoercible
+module.exports = function (it) {
+  if (it == undefined) throw TypeError("Can't call method on " + it);
+  return it;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/set-global.js":
+/*!******************************************************!*\
+  !*** ./node_modules/core-js/internals/set-global.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var createNonEnumerableProperty = __webpack_require__(/*! ../internals/create-non-enumerable-property */ "./node_modules/core-js/internals/create-non-enumerable-property.js");
+
+module.exports = function (key, value) {
+  try {
+    createNonEnumerableProperty(global, key, value);
+  } catch (error) {
+    global[key] = value;
+  } return value;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/shared-key.js":
+/*!******************************************************!*\
+  !*** ./node_modules/core-js/internals/shared-key.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var shared = __webpack_require__(/*! ../internals/shared */ "./node_modules/core-js/internals/shared.js");
+var uid = __webpack_require__(/*! ../internals/uid */ "./node_modules/core-js/internals/uid.js");
+
+var keys = shared('keys');
+
+module.exports = function (key) {
+  return keys[key] || (keys[key] = uid(key));
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/shared-store.js":
+/*!********************************************************!*\
+  !*** ./node_modules/core-js/internals/shared-store.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var setGlobal = __webpack_require__(/*! ../internals/set-global */ "./node_modules/core-js/internals/set-global.js");
+
+var SHARED = '__core-js_shared__';
+var store = global[SHARED] || setGlobal(SHARED, {});
+
+module.exports = store;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/shared.js":
+/*!**************************************************!*\
+  !*** ./node_modules/core-js/internals/shared.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var IS_PURE = __webpack_require__(/*! ../internals/is-pure */ "./node_modules/core-js/internals/is-pure.js");
+var store = __webpack_require__(/*! ../internals/shared-store */ "./node_modules/core-js/internals/shared-store.js");
+
+(module.exports = function (key, value) {
+  return store[key] || (store[key] = value !== undefined ? value : {});
+})('versions', []).push({
+  version: '3.6.5',
+  mode: IS_PURE ? 'pure' : 'global',
+  copyright: '© 2020 Denis Pushkarev (zloirock.ru)'
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/string-trim.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/string-trim.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var requireObjectCoercible = __webpack_require__(/*! ../internals/require-object-coercible */ "./node_modules/core-js/internals/require-object-coercible.js");
+var whitespaces = __webpack_require__(/*! ../internals/whitespaces */ "./node_modules/core-js/internals/whitespaces.js");
+
+var whitespace = '[' + whitespaces + ']';
+var ltrim = RegExp('^' + whitespace + whitespace + '*');
+var rtrim = RegExp(whitespace + whitespace + '*$');
+
+// `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
+var createMethod = function (TYPE) {
+  return function ($this) {
+    var string = String(requireObjectCoercible($this));
+    if (TYPE & 1) string = string.replace(ltrim, '');
+    if (TYPE & 2) string = string.replace(rtrim, '');
+    return string;
+  };
+};
+
+module.exports = {
+  // `String.prototype.{ trimLeft, trimStart }` methods
+  // https://tc39.github.io/ecma262/#sec-string.prototype.trimstart
+  start: createMethod(1),
+  // `String.prototype.{ trimRight, trimEnd }` methods
+  // https://tc39.github.io/ecma262/#sec-string.prototype.trimend
+  end: createMethod(2),
+  // `String.prototype.trim` method
+  // https://tc39.github.io/ecma262/#sec-string.prototype.trim
+  trim: createMethod(3)
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-absolute-index.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/to-absolute-index.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var toInteger = __webpack_require__(/*! ../internals/to-integer */ "./node_modules/core-js/internals/to-integer.js");
+
+var max = Math.max;
+var min = Math.min;
+
+// Helper for a popular repeating case of the spec:
+// Let integer be ? ToInteger(index).
+// If integer < 0, let result be max((length + integer), 0); else let result be min(integer, length).
+module.exports = function (index, length) {
+  var integer = toInteger(index);
+  return integer < 0 ? max(integer + length, 0) : min(integer, length);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-indexed-object.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/to-indexed-object.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+// toObject with fallback for non-array-like ES3 strings
+var IndexedObject = __webpack_require__(/*! ../internals/indexed-object */ "./node_modules/core-js/internals/indexed-object.js");
+var requireObjectCoercible = __webpack_require__(/*! ../internals/require-object-coercible */ "./node_modules/core-js/internals/require-object-coercible.js");
+
+module.exports = function (it) {
+  return IndexedObject(requireObjectCoercible(it));
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-integer.js":
+/*!******************************************************!*\
+  !*** ./node_modules/core-js/internals/to-integer.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var ceil = Math.ceil;
+var floor = Math.floor;
+
+// `ToInteger` abstract operation
+// https://tc39.github.io/ecma262/#sec-tointeger
+module.exports = function (argument) {
+  return isNaN(argument = +argument) ? 0 : (argument > 0 ? floor : ceil)(argument);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-length.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/core-js/internals/to-length.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var toInteger = __webpack_require__(/*! ../internals/to-integer */ "./node_modules/core-js/internals/to-integer.js");
+
+var min = Math.min;
+
+// `ToLength` abstract operation
+// https://tc39.github.io/ecma262/#sec-tolength
+module.exports = function (argument) {
+  return argument > 0 ? min(toInteger(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-object.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/core-js/internals/to-object.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var requireObjectCoercible = __webpack_require__(/*! ../internals/require-object-coercible */ "./node_modules/core-js/internals/require-object-coercible.js");
+
+// `ToObject` abstract operation
+// https://tc39.github.io/ecma262/#sec-toobject
+module.exports = function (argument) {
+  return Object(requireObjectCoercible(argument));
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/to-primitive.js":
+/*!********************************************************!*\
+  !*** ./node_modules/core-js/internals/to-primitive.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+
+// `ToPrimitive` abstract operation
+// https://tc39.github.io/ecma262/#sec-toprimitive
+// instead of the ES6 spec version, we didn't implement @@toPrimitive case
+// and the second argument - flag - preferred type is a string
+module.exports = function (input, PREFERRED_STRING) {
+  if (!isObject(input)) return input;
+  var fn, val;
+  if (PREFERRED_STRING && typeof (fn = input.toString) == 'function' && !isObject(val = fn.call(input))) return val;
+  if (typeof (fn = input.valueOf) == 'function' && !isObject(val = fn.call(input))) return val;
+  if (!PREFERRED_STRING && typeof (fn = input.toString) == 'function' && !isObject(val = fn.call(input))) return val;
+  throw TypeError("Can't convert object to primitive value");
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/uid.js":
+/*!***********************************************!*\
+  !*** ./node_modules/core-js/internals/uid.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var id = 0;
+var postfix = Math.random();
+
+module.exports = function (key) {
+  return 'Symbol(' + String(key === undefined ? '' : key) + ')_' + (++id + postfix).toString(36);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/use-symbol-as-uid.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/use-symbol-as-uid.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var NATIVE_SYMBOL = __webpack_require__(/*! ../internals/native-symbol */ "./node_modules/core-js/internals/native-symbol.js");
+
+module.exports = NATIVE_SYMBOL
+  // eslint-disable-next-line no-undef
+  && !Symbol.sham
+  // eslint-disable-next-line no-undef
+  && typeof Symbol.iterator == 'symbol';
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/well-known-symbol.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/well-known-symbol.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var shared = __webpack_require__(/*! ../internals/shared */ "./node_modules/core-js/internals/shared.js");
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var uid = __webpack_require__(/*! ../internals/uid */ "./node_modules/core-js/internals/uid.js");
+var NATIVE_SYMBOL = __webpack_require__(/*! ../internals/native-symbol */ "./node_modules/core-js/internals/native-symbol.js");
+var USE_SYMBOL_AS_UID = __webpack_require__(/*! ../internals/use-symbol-as-uid */ "./node_modules/core-js/internals/use-symbol-as-uid.js");
+
+var WellKnownSymbolsStore = shared('wks');
+var Symbol = global.Symbol;
+var createWellKnownSymbol = USE_SYMBOL_AS_UID ? Symbol : Symbol && Symbol.withoutSetter || uid;
+
+module.exports = function (name) {
+  if (!has(WellKnownSymbolsStore, name)) {
+    if (NATIVE_SYMBOL && has(Symbol, name)) WellKnownSymbolsStore[name] = Symbol[name];
+    else WellKnownSymbolsStore[name] = createWellKnownSymbol('Symbol.' + name);
+  } return WellKnownSymbolsStore[name];
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/whitespaces.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/whitespaces.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// a string of all valid unicode whitespaces
+// eslint-disable-next-line max-len
+module.exports = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/modules/es.array.find.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/modules/es.array.find.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__(/*! ../internals/export */ "./node_modules/core-js/internals/export.js");
+var $find = __webpack_require__(/*! ../internals/array-iteration */ "./node_modules/core-js/internals/array-iteration.js").find;
+var addToUnscopables = __webpack_require__(/*! ../internals/add-to-unscopables */ "./node_modules/core-js/internals/add-to-unscopables.js");
+var arrayMethodUsesToLength = __webpack_require__(/*! ../internals/array-method-uses-to-length */ "./node_modules/core-js/internals/array-method-uses-to-length.js");
+
+var FIND = 'find';
+var SKIPS_HOLES = true;
+
+var USES_TO_LENGTH = arrayMethodUsesToLength(FIND);
+
+// Shouldn't skip holes
+if (FIND in []) Array(1)[FIND](function () { SKIPS_HOLES = false; });
+
+// `Array.prototype.find` method
+// https://tc39.github.io/ecma262/#sec-array.prototype.find
+$({ target: 'Array', proto: true, forced: SKIPS_HOLES || !USES_TO_LENGTH }, {
+  find: function find(callbackfn /* , that = undefined */) {
+    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+addToUnscopables(FIND);
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/modules/es.number.constructor.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/core-js/modules/es.number.constructor.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var DESCRIPTORS = __webpack_require__(/*! ../internals/descriptors */ "./node_modules/core-js/internals/descriptors.js");
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var isForced = __webpack_require__(/*! ../internals/is-forced */ "./node_modules/core-js/internals/is-forced.js");
+var redefine = __webpack_require__(/*! ../internals/redefine */ "./node_modules/core-js/internals/redefine.js");
+var has = __webpack_require__(/*! ../internals/has */ "./node_modules/core-js/internals/has.js");
+var classof = __webpack_require__(/*! ../internals/classof-raw */ "./node_modules/core-js/internals/classof-raw.js");
+var inheritIfRequired = __webpack_require__(/*! ../internals/inherit-if-required */ "./node_modules/core-js/internals/inherit-if-required.js");
+var toPrimitive = __webpack_require__(/*! ../internals/to-primitive */ "./node_modules/core-js/internals/to-primitive.js");
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+var create = __webpack_require__(/*! ../internals/object-create */ "./node_modules/core-js/internals/object-create.js");
+var getOwnPropertyNames = __webpack_require__(/*! ../internals/object-get-own-property-names */ "./node_modules/core-js/internals/object-get-own-property-names.js").f;
+var getOwnPropertyDescriptor = __webpack_require__(/*! ../internals/object-get-own-property-descriptor */ "./node_modules/core-js/internals/object-get-own-property-descriptor.js").f;
+var defineProperty = __webpack_require__(/*! ../internals/object-define-property */ "./node_modules/core-js/internals/object-define-property.js").f;
+var trim = __webpack_require__(/*! ../internals/string-trim */ "./node_modules/core-js/internals/string-trim.js").trim;
+
+var NUMBER = 'Number';
+var NativeNumber = global[NUMBER];
+var NumberPrototype = NativeNumber.prototype;
+
+// Opera ~12 has broken Object#toString
+var BROKEN_CLASSOF = classof(create(NumberPrototype)) == NUMBER;
+
+// `ToNumber` abstract operation
+// https://tc39.github.io/ecma262/#sec-tonumber
+var toNumber = function (argument) {
+  var it = toPrimitive(argument, false);
+  var first, third, radix, maxCode, digits, length, index, code;
+  if (typeof it == 'string' && it.length > 2) {
+    it = trim(it);
+    first = it.charCodeAt(0);
+    if (first === 43 || first === 45) {
+      third = it.charCodeAt(2);
+      if (third === 88 || third === 120) return NaN; // Number('+0x1') should be NaN, old V8 fix
+    } else if (first === 48) {
+      switch (it.charCodeAt(1)) {
+        case 66: case 98: radix = 2; maxCode = 49; break; // fast equal of /^0b[01]+$/i
+        case 79: case 111: radix = 8; maxCode = 55; break; // fast equal of /^0o[0-7]+$/i
+        default: return +it;
+      }
+      digits = it.slice(2);
+      length = digits.length;
+      for (index = 0; index < length; index++) {
+        code = digits.charCodeAt(index);
+        // parseInt parses a string to a first unavailable symbol
+        // but ToNumber should return NaN if a string contains unavailable symbols
+        if (code < 48 || code > maxCode) return NaN;
+      } return parseInt(digits, radix);
+    }
+  } return +it;
+};
+
+// `Number` constructor
+// https://tc39.github.io/ecma262/#sec-number-constructor
+if (isForced(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'))) {
+  var NumberWrapper = function Number(value) {
+    var it = arguments.length < 1 ? 0 : value;
+    var dummy = this;
+    return dummy instanceof NumberWrapper
+      // check on 1..constructor(foo) case
+      && (BROKEN_CLASSOF ? fails(function () { NumberPrototype.valueOf.call(dummy); }) : classof(dummy) != NUMBER)
+        ? inheritIfRequired(new NativeNumber(toNumber(it)), dummy, NumberWrapper) : toNumber(it);
+  };
+  for (var keys = DESCRIPTORS ? getOwnPropertyNames(NativeNumber) : (
+    // ES3:
+    'MAX_VALUE,MIN_VALUE,NaN,NEGATIVE_INFINITY,POSITIVE_INFINITY,' +
+    // ES2015 (in case, if modules with ES2015 Number statics required before):
+    'EPSILON,isFinite,isInteger,isNaN,isSafeInteger,MAX_SAFE_INTEGER,' +
+    'MIN_SAFE_INTEGER,parseFloat,parseInt,isInteger'
+  ).split(','), j = 0, key; keys.length > j; j++) {
+    if (has(NativeNumber, key = keys[j]) && !has(NumberWrapper, key)) {
+      defineProperty(NumberWrapper, key, getOwnPropertyDescriptor(NativeNumber, key));
+    }
+  }
+  NumberWrapper.prototype = NumberPrototype;
+  NumberPrototype.constructor = NumberWrapper;
+  redefine(global, NUMBER, NumberWrapper);
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/is-buffer/index.js":
+/*!*****************************************!*\
+  !*** ./node_modules/is-buffer/index.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+/*!
+ * Determine if an object is a Buffer
+ *
+ * @author   Feross Aboukhadijeh <https://feross.org>
+ * @license  MIT
+ */
+
+module.exports = function isBuffer (obj) {
+  return obj != null && obj.constructor != null &&
+    typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj)
+}
 
 
 /***/ }),
@@ -29286,7 +30798,7 @@ return jQuery;
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.15';
+  var VERSION = '4.17.19';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -32993,8 +34505,21 @@ return jQuery;
      * @returns {Array} Returns the new sorted array.
      */
     function baseOrderBy(collection, iteratees, orders) {
+      if (iteratees.length) {
+        iteratees = arrayMap(iteratees, function(iteratee) {
+          if (isArray(iteratee)) {
+            return function(value) {
+              return baseGet(value, iteratee.length === 1 ? iteratee[0] : iteratee);
+            }
+          }
+          return iteratee;
+        });
+      } else {
+        iteratees = [identity];
+      }
+
       var index = -1;
-      iteratees = arrayMap(iteratees.length ? iteratees : [identity], baseUnary(getIteratee()));
+      iteratees = arrayMap(iteratees, baseUnary(getIteratee()));
 
       var result = baseMap(collection, function(value, key, collection) {
         var criteria = arrayMap(iteratees, function(iteratee) {
@@ -33251,6 +34776,10 @@ return jQuery;
         var key = toKey(path[index]),
             newValue = value;
 
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          return object;
+        }
+
         if (index != lastIndex) {
           var objValue = nested[key];
           newValue = customizer ? customizer(objValue, key, nested) : undefined;
@@ -33403,11 +34932,14 @@ return jQuery;
      *  into `array`.
      */
     function baseSortedIndexBy(array, value, iteratee, retHighest) {
-      value = iteratee(value);
-
       var low = 0,
-          high = array == null ? 0 : array.length,
-          valIsNaN = value !== value,
+          high = array == null ? 0 : array.length;
+      if (high === 0) {
+        return 0;
+      }
+
+      value = iteratee(value);
+      var valIsNaN = value !== value,
           valIsNull = value === null,
           valIsSymbol = isSymbol(value),
           valIsUndefined = value === undefined;
@@ -34892,10 +36424,11 @@ return jQuery;
       if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
         return false;
       }
-      // Assume cyclic values are equal.
-      var stacked = stack.get(array);
-      if (stacked && stack.get(other)) {
-        return stacked == other;
+      // Check that cyclic values are equal.
+      var arrStacked = stack.get(array);
+      var othStacked = stack.get(other);
+      if (arrStacked && othStacked) {
+        return arrStacked == other && othStacked == array;
       }
       var index = -1,
           result = true,
@@ -35057,10 +36590,11 @@ return jQuery;
           return false;
         }
       }
-      // Assume cyclic values are equal.
-      var stacked = stack.get(object);
-      if (stacked && stack.get(other)) {
-        return stacked == other;
+      // Check that cyclic values are equal.
+      var objStacked = stack.get(object);
+      var othStacked = stack.get(other);
+      if (objStacked && othStacked) {
+        return objStacked == other && othStacked == object;
       }
       var result = true;
       stack.set(object, other);
@@ -38441,6 +39975,10 @@ return jQuery;
      * // The `_.property` iteratee shorthand.
      * _.filter(users, 'active');
      * // => objects for ['barney']
+     *
+     * // Combining several predicates using `_.overEvery` or `_.overSome`.
+     * _.filter(users, _.overSome([{ 'age': 36 }, ['age', 40]]));
+     * // => objects for ['fred', 'barney']
      */
     function filter(collection, predicate) {
       var func = isArray(collection) ? arrayFilter : baseFilter;
@@ -39190,15 +40728,15 @@ return jQuery;
      * var users = [
      *   { 'user': 'fred',   'age': 48 },
      *   { 'user': 'barney', 'age': 36 },
-     *   { 'user': 'fred',   'age': 40 },
+     *   { 'user': 'fred',   'age': 30 },
      *   { 'user': 'barney', 'age': 34 }
      * ];
      *
      * _.sortBy(users, [function(o) { return o.user; }]);
-     * // => objects for [['barney', 36], ['barney', 34], ['fred', 48], ['fred', 40]]
+     * // => objects for [['barney', 36], ['barney', 34], ['fred', 48], ['fred', 30]]
      *
      * _.sortBy(users, ['user', 'age']);
-     * // => objects for [['barney', 34], ['barney', 36], ['fred', 40], ['fred', 48]]
+     * // => objects for [['barney', 34], ['barney', 36], ['fred', 30], ['fred', 48]]
      */
     var sortBy = baseRest(function(collection, iteratees) {
       if (collection == null) {
@@ -44073,11 +45611,11 @@ return jQuery;
 
       // Use a sourceURL for easier debugging.
       // The sourceURL gets injected into the source that's eval-ed, so be careful
-      // with lookup (in case of e.g. prototype pollution), and strip newlines if any.
-      // A newline wouldn't be a valid sourceURL anyway, and it'd enable code injection.
+      // to normalize all kinds of whitespace, so e.g. newlines (and unicode versions of it) can't sneak in
+      // and escape the comment, thus injecting code that gets evaled.
       var sourceURL = '//# sourceURL=' +
         (hasOwnProperty.call(options, 'sourceURL')
-          ? (options.sourceURL + '').replace(/[\r\n]/g, ' ')
+          ? (options.sourceURL + '').replace(/\s/g, ' ')
           : ('lodash.templateSources[' + (++templateCounter) + ']')
         ) + '\n';
 
@@ -44110,8 +45648,6 @@ return jQuery;
 
       // If `variable` is not specified wrap a with-statement around the generated
       // code to add the data object to the top of the scope chain.
-      // Like with sourceURL, we take care to not check the option's prototype,
-      // as this configuration is a code injection vector.
       var variable = hasOwnProperty.call(options, 'variable') && options.variable;
       if (!variable) {
         source = 'with (obj) {\n' + source + '\n}\n';
@@ -44818,6 +46354,9 @@ return jQuery;
      * values against any array or object value, respectively. See `_.isEqual`
      * for a list of supported value comparisons.
      *
+     * **Note:** Multiple values can be checked by combining several matchers
+     * using `_.overSome`
+     *
      * @static
      * @memberOf _
      * @since 3.0.0
@@ -44833,6 +46372,10 @@ return jQuery;
      *
      * _.filter(objects, _.matches({ 'a': 4, 'c': 6 }));
      * // => [{ 'a': 4, 'b': 5, 'c': 6 }]
+     *
+     * // Checking for several possible values
+     * _.filter(users, _.overSome([_.matches({ 'a': 1 }), _.matches({ 'a': 4 })]));
+     * // => [{ 'a': 1, 'b': 2, 'c': 3 }, { 'a': 4, 'b': 5, 'c': 6 }]
      */
     function matches(source) {
       return baseMatches(baseClone(source, CLONE_DEEP_FLAG));
@@ -44846,6 +46389,9 @@ return jQuery;
      * **Note:** Partial comparisons will match empty array and empty object
      * `srcValue` values against any array or object value, respectively. See
      * `_.isEqual` for a list of supported value comparisons.
+     *
+     * **Note:** Multiple values can be checked by combining several matchers
+     * using `_.overSome`
      *
      * @static
      * @memberOf _
@@ -44863,6 +46409,10 @@ return jQuery;
      *
      * _.find(objects, _.matchesProperty('a', 4));
      * // => { 'a': 4, 'b': 5, 'c': 6 }
+     *
+     * // Checking for several possible values
+     * _.filter(users, _.overSome([_.matchesProperty('a', 1), _.matchesProperty('a', 4)]));
+     * // => [{ 'a': 1, 'b': 2, 'c': 3 }, { 'a': 4, 'b': 5, 'c': 6 }]
      */
     function matchesProperty(path, srcValue) {
       return baseMatchesProperty(path, baseClone(srcValue, CLONE_DEEP_FLAG));
@@ -45086,6 +46636,10 @@ return jQuery;
      * Creates a function that checks if **all** of the `predicates` return
      * truthy when invoked with the arguments it receives.
      *
+     * Following shorthands are possible for providing predicates.
+     * Pass an `Object` and it will be used as an parameter for `_.matches` to create the predicate.
+     * Pass an `Array` of parameters for `_.matchesProperty` and the predicate will be created using them.
+     *
      * @static
      * @memberOf _
      * @since 4.0.0
@@ -45112,6 +46666,10 @@ return jQuery;
      * Creates a function that checks if **any** of the `predicates` return
      * truthy when invoked with the arguments it receives.
      *
+     * Following shorthands are possible for providing predicates.
+     * Pass an `Object` and it will be used as an parameter for `_.matches` to create the predicate.
+     * Pass an `Array` of parameters for `_.matchesProperty` and the predicate will be created using them.
+     *
      * @static
      * @memberOf _
      * @since 4.0.0
@@ -45131,6 +46689,9 @@ return jQuery;
      *
      * func(NaN);
      * // => false
+     *
+     * var matchesFunc = _.overSome([{ 'a': 1 }, { 'a': 2 }])
+     * var matchesPropertyFunc = _.overSome([['a', 1], ['a', 2]])
      */
     var overSome = createOver(arraySome);
 
@@ -54869,7 +56430,11 @@ __webpack_require__(/*! ./bootstrap */ "./resources/js/bootstrap.js");
   !*** ./resources/js/blog_detail.js ***!
   \*************************************/
 /*! no static exports found */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
+
+__webpack_require__(/*! core-js/modules/es.array.find */ "./node_modules/core-js/modules/es.array.find.js");
+
+__webpack_require__(/*! core-js/modules/es.number.constructor */ "./node_modules/core-js/modules/es.number.constructor.js");
 
 $(".new_a_liyi").on('click', function () {
   var url = '';
@@ -54944,6 +56509,70 @@ function jayComment(url, data) {
       console.log(res);
     },
     error: function error(err) {}
+  });
+}
+
+$('.jay-ajax-many-blog').on('click', function () {
+  var page = $(this).data('key');
+  ++page;
+  var url = 'blog-list/' + page;
+  ajaxGetManyBlog(page, $(this), url, 2);
+});
+$('.jay-ajax-many-home').on('click', function () {
+  var page = $(this).data('key');
+  ++page;
+  var url = 'home-list/' + page;
+  ajaxGetManyBlog(page, $(this), url, 1);
+});
+/**
+ *
+ * @param page
+ * @param that
+ * @param url
+ * @param type 1 => home; 2 => blog
+ */
+
+function ajaxGetManyBlog(page, that, url, type) {
+  $.ajax({
+    url: url,
+    dataType: 'json',
+    method: "GET",
+    beforeSend: function beforeSend() {
+      that.prop('disabled', true);
+      that.find('.jay-loading-text').text('正在加载');
+      that.find('.spinner-border').show();
+    },
+    success: function success(res) {
+      if (res.status) {
+        that.data('key', page);
+
+        if (res.message) {
+          that.prop('disabled', false);
+          that.find('.jay-loading-text').text('加载更多');
+          that.find('.spinner-border').hide();
+
+          switch (type) {
+            case 1:
+              that.closest('.blog-main').find('.jay-list').append(res.message);
+              break;
+
+            case 2:
+              that.closest('.container').find('.row:first').append(res.message);
+              break;
+          }
+        } else {
+          that.find('.spinner-border').hide();
+          that.find('.jay-loading-text').text('没有数据啦');
+        }
+      } else {
+        that.prop('disabled', false);
+        that.find('.jay-loading-text').text('加载更多');
+      }
+    },
+    error: function error(err) {
+      that.prop('disabled', false);
+      that.find('.jay-loading-text').text('加载更多');
+    }
   });
 }
 

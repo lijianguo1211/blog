@@ -113,9 +113,9 @@ class BlogServices implements HomeInterface
         ];
     }
 
-    public function onlyBlogList()
+    public function onlyBlogList(int $offset = 0, bool $isTop = false)
     {
-        return ['onlyBlogList' => $this->blogAll(false)];
+        return ['onlyBlogList' => $this->blogAll($isTop, $offset)];
     }
 
     /**
@@ -188,10 +188,10 @@ class BlogServices implements HomeInterface
     }
 
 
-    protected function blogAll(bool $isTopWhere = true)
+    protected function blogAll(bool $isTopWhere = true, int $offset = 0)
     {
         try {
-            $result = $this->blog->append('post_content_info', 'diffTime')
+            $result = $this->blog->append('post_content_info', 'diffTime', 'titleShort')
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
                 ->when($isTopWhere, function ($query) {
@@ -207,7 +207,9 @@ class BlogServices implements HomeInterface
                     $query->where("jay_blog_tag_categories.type", self::CATEGORY);
                 }])
                 ->limit($this->getBlogNumber())
-                ->get()->toArray();
+                ->offset($offset * $this->getBlogNumber())
+                ->get()
+                ->toArray();
         } catch (\Exception $e) {
             $result = [];
             \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());

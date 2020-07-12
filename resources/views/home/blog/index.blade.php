@@ -16,11 +16,11 @@
                             <div class="col-md-4">
                                 <div class="card mb-4 shadow-sm">
                                     <a href="{{ route('home.blog_details', ['id' => $item['id']]) }}">
-                                        <img src="{{ $item['img_path'] }}" style="max-height: 225px">
+                                        <img src="{{ $item['img_path'] }}" style="max-height: 225px; width: 100%;">
                                     </a>
-                                    <div class="card-body">
+                                    <div class="card-body jay-blog-card-body">
                                         <h5 class="card-text">
-                                            <a class="text-dark a-remove-line" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a>
+                                            <a class="text-dark a-remove-line text-truncate" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a>
                                         </h5>
                                         <p class="card-text text-break jay-max-blog-detail-3">
                                             {!! $item['blog_detail']['post_content_info'] !!}
@@ -71,7 +71,18 @@
                     @endempty
 
                 </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-4">
+                        <button type="button" data-key="0" class="btn btn-secondary btn-lg btn-block jay-ajax-many-blog">
+                            <span class="spinner-border spinner-border-sm" style="width: 1.5rem; height: 1.5rem;display: none;" role="status" aria-hidden="true"></span>
+                            <span class="jay-loading-text">加载更多</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+
+
     </main>
 @endsection

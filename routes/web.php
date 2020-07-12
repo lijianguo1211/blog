@@ -20,6 +20,12 @@ Route::namespace('Home')->as('home.')->group(function ($group) {
     $group->post('blog/comment/{id}', 'AjaxController@comment')->name('comment');
     $group->get('diary', 'DiaryController@index')->name('diary');
     $group->get('source', 'SourceController@index')->name('source');
+    $group->get('blog-list/{page}', 'AjaxBlogController@index')->name('blog-list');
+    $group->get('home-list/{page}', 'AjaxHomeController@index')->name('home-list');
+});
+
+Route::namespace('Admin')->as('admin.')->group(function ($group) {
+    $group->get('admin', 'AdminController@index');
 });
 
 

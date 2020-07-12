@@ -84,7 +84,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 .blog-post-title {
     margin-bottom: .25rem;
-    font-size: 2.5rem;
+    font-size: 2rem;
+}
+.blog-post-title a {
+    color: #232323!important;
 }
 .blog-post-meta {
     margin-bottom: 1.25rem;
@@ -183,4 +186,43 @@ h1, h2, h3, h4, h5, h6 {
 
 .a-remove-line {
     text-decoration:none!important;
+}
+.card .jay-blog-card-body {
+    min-height: 181px;
+    max-height: 181px;
+}
+
+.jay-button-border {
+    border-radius: 10rem;
+}
+
+.jay-ajax-many-home:hover {
+    background: #232323;
+    color: #fff;
+}
+.jay-footer {
+    background-color: #1b1c1d;
+}
+
+.jay-footer h5 {
+    font-size: 1.271rem;
+    font-weight: 700;
+    line-height: 1.2857em;
+    text-transform: none;
+    color: #ffffff;
+}
+.jay-footer li a {
+    font-size: 0.91em;
+    color: hsla(0,0%,100%,.5)!important;
+    line-height: 22px;
+}
+
+.jay-footer .justify-content-lg-center .col-6 {
+    text-align: center;
+    padding-top: 1rem;
+}
+
+.jay-footer .jay-me-title p{
+    font-size: 0.91rem;
+    color: hsla(0,0%,100%,.9);
 }

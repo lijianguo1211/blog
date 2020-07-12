@@ -3,12 +3,10 @@
 
 namespace App\Http\Controllers\Home;
 
-
-use App\Http\Controllers\Controller;
 use App\Service\AjaxService;
 use Illuminate\Http\Request;
 
-class AjaxController extends Controller
+class AjaxController extends BaseAjaxController
 {
     public function addLikes(int $id, AjaxService $service)
     {
@@ -27,3 +25,5 @@ class AjaxController extends Controller
         return $service->comment($id, $data);
     }
 }
+
+

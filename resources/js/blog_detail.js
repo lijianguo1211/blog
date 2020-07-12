@@ -72,3 +72,67 @@ function jayComment(url, data)
         }
     })
 }
+
+$('.jay-ajax-many-blog').on('click', function () {
+    let page = $(this).data('key');
+    ++page;
+    let url = 'blog-list/'+page;
+    ajaxGetManyBlog(page, $(this), url, 2);
+});
+
+$('.jay-ajax-many-home').on('click', function () {
+    let page = $(this).data('key');
+    ++page;
+    let url = 'home-list/'+page;
+    ajaxGetManyBlog(page, $(this), url, 1);
+});
+
+/**
+ *
+ * @param page
+ * @param that
+ * @param url
+ * @param type 1 => home; 2 => blog
+ */
+function ajaxGetManyBlog(page, that, url, type)
+{
+    $.ajax({
+        url: url,
+        dataType: 'json',
+        method: "GET",
+        beforeSend: function () {
+            that.prop('disabled', true);
+            that.find('.jay-loading-text').text('正在加载');
+            that.find('.spinner-border').show();
+        },
+        success: function (res) {
+            if (res.status) {
+                that.data('key', page);
+                if (res.message) {
+                    that.prop('disabled', false);
+                    that.find('.jay-loading-text').text('加载更多');
+                    that.find('.spinner-border').hide();
+                    switch (type) {
+                        case 1:
+                            that.closest('.blog-main').find('.jay-list').append(res.message);
+                            break;
+                        case 2:
+                            that.closest('.container').find('.row:first').append(res.message);
+                            break;
+                    }
+                } else {
+                    that.find('.spinner-border').hide();
+                    that.find('.jay-loading-text').text('没有数据啦');
+                }
+            } else {
+                that.prop('disabled', false);
+                that.find('.jay-loading-text').text('加载更多');
+            }
+        },
+        error: function (err) {
+            that.prop('disabled', false);
+            that.find('.jay-loading-text').text('加载更多');
+        }
+    });
+}
+

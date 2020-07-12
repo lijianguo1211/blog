@@ -13,7 +13,7 @@
         </div>
     </div>
 
-    <div class="row mb-2">
+    {{--<div class="row mb-2">
         <div class="col-md-6">
             <div class="row no-gutters border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
                 <div class="col p-4 d-flex flex-column position-static">
@@ -42,7 +42,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div>--}}
 @endsection
 
 @section('content')
@@ -52,33 +52,47 @@
                 <h3 class="pb-4 mb-4 font-italic border-bottom">
                     LiYi ~
                 </h3>
-                @if(!empty($topBlog))
-                    <div class="blog-post">
-                        <h2 class="blog-post-title">
-                            <a href="{{ route('home.blog_details', ['id' => $topBlog['id']]) }}">{{ $topBlog['title'] }}</a>
-                        </h2>
-                        <p class="blog-post-meta">{{ $topBlog['created_at'] }} <a href="#">Mark</a></p>
-                        {!! $topBlog['blog_detail']['post_content_info'] !!}
-                    </div>
-                @endif
-
-                @if(!empty($allBlog))
-                    @foreach($allBlog as $item)
+                <div class="jay-list">
+                    @if(!empty($topBlog))
                         <div class="blog-post">
                             <h2 class="blog-post-title">
-                                <a href="{{ route('home.blog_details', ['id' => $item['id']]) }}">
-                                    {{ $item['title'] }}
-                                </a>
+                                <a href="{{ route('home.blog_details', ['id' => $topBlog['id']]) }}">{{ $topBlog['title'] }}</a>
                             </h2>
-                            <p class="blog-post-meta">{{ $item['created_at'] }} <a href="#">Mark</a></p>
-                            {!! $item['blog_detail']['post_content_info'] !!}
+                            <p class="blog-post-meta">{{ $topBlog['created_at'] }} <a href="#">LiYi</a></p>
+                            {!! $topBlog['blog_detail']['post_content_info'] !!}
                         </div>
-                    @endforeach
-                @endif
+                    @endif
+
+                    @if(!empty($allBlog))
+                        @foreach($allBlog as $item)
+                            <div class="blog-post">
+                                <h2 class="blog-post-title jay-home-blog-title-h3">
+                                    <a href="{{ route('home.blog_details', ['id' => $item['id']]) }}">
+                                        {{ $item['title'] }}
+                                    </a>
+                                </h2>
+                                <p class="blog-post-meta">{{ $item['created_at'] }} <a href="#">LiYi</a></p>
+                                <div class="blog-info">
+                                    {!! $item['blog_detail']['post_content_info'] !!}
+                                </div>
+                            </div>
+                        @endforeach
+                    @endif
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-4">
+                        <button type="button" data-key="0" class="btn border border-secondary btn-lg btn-block jay-ajax-many-home rounded-pill">
+                            <span class="spinner-border spinner-border-sm" style="width: 1.5rem; height: 1.5rem;display: none;" role="status" aria-hidden="true"></span>
+                            <span class="jay-loading-text">加载更多</span>
+                        </button>
+                    </div>
+                </div>
+
                 <nav class="blog-pagination">
-                    <a class="btn btn-outline-primary" href="#">Older</a>
-                    <a class="btn btn-outline-secondary disabled" href="#" tabindex="-1" aria-disabled="true">Newer</a>
+
                 </nav>
+
 
             </div><!-- /.blog-main -->
 
@@ -86,7 +100,7 @@
                 <div class="p-4 mb-3 bg-light rounded">
                     @empty($homeSources)
                         <h4 class="font-italic">
-                            <a class="text-dark a-remove-line" href="{{ route('home.index') }}" target="_blank">
+                            <a class="text-dark a-remove-line" data-key="0" href="{{ route('home.index') }}" target="_blank">
                                 吃瓜
                             </a>
                         </h4>
