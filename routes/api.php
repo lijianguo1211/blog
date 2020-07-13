@@ -21,4 +21,6 @@ $api = app('Dingo\Api\Routing\Router');
 
 $api->version('v1', function ($api) {
     $api->post('admin/user/login', 'App\Api\V1\Controllers\AuthController@login')->name('api.v1.login');
+    $api->get('admin/user/logout', 'App\Api\V1\Controllers\AuthController@logout')->name('api.v1.logout');
+    $api->post('admin/user/info', 'App\Api\V1\Controllers\AuthController@info')->name('api.v1.info');
 });
