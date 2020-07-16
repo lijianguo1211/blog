@@ -39,11 +39,11 @@ class BlogDetail extends Model
 
     public function getPostContentInfoAttribute($value)
     {
-        if (empty($this->content_md)) {
+        if (empty($this->content_html)) {
             return '...';
         }
 
-        $str = strip_tags($this->content_md);
+        $str = strip_tags($this->content_html);
 
         return  mb_substr($str, 0, 200) . '...';
     }

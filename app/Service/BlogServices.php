@@ -134,7 +134,7 @@ class BlogServices implements HomeInterface
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
                 ->with(['BlogDetail' => function ($query) {
-                    $query->select('blog_id', 'content_md', 'id');
+                    $query->select('blog_id', 'content_html', 'id');
                 }])
                 ->with('tags')
                 ->with('categories')
@@ -163,7 +163,7 @@ class BlogServices implements HomeInterface
                 ->where('post_status', $this->getPostStatus())
                 ->orderBy('sort')
                 ->with(['BlogDetail' => function ($query) {
-                    $query->select('blog_id', 'content_md', 'id');
+                    $query->select('blog_id', 'content_html', 'id');
                 }])
                 ->with(['tags' => function ($query) {
                     $query->where("jay_blog_tag_categories.type", self::TAG);
@@ -198,7 +198,7 @@ class BlogServices implements HomeInterface
                     $query->where("is_top", $this->isNoTop);
                 })
                 ->with(['BlogDetail' => function ($query) {
-                    $query->select('blog_id', 'content_md', 'id');
+                    $query->select('blog_id', 'content_html', 'id');
                 }])
                 ->with(['tags' => function ($query) {
                     $query->where("jay_blog_tag_categories.type", self::TAG);

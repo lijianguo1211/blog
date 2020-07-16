@@ -107,6 +107,10 @@
       <path value="$PROJECT_DIR$/vendor/dingo/api" />
       <path value="$PROJECT_DIR$/vendor/doctrine/annotations" />
       <path value="$PROJECT_DIR$/vendor/league/fractal" />
+      <path value="$PROJECT_DIR$/vendor/encore/laravel-admin" />
+      <path value="$PROJECT_DIR$/vendor/symfony/dom-crawler" />
+      <path value="$PROJECT_DIR$/vendor/sharemant/laravel-admin-ext-editormd" />
+      <path value="$PROJECT_DIR$/vendor/erusev/parsedown" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="7.2" />

@@ -27,7 +27,7 @@
                         </div>
 
                         <div class="language-php-jay">
-                            {!! $blogDetail['blog_detail']['content_md'] !!}
+                            {!! $blogDetail['blog_detail']['content_html'] !!}
                         </div>
 
                     </div>

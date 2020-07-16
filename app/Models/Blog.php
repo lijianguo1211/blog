@@ -55,6 +55,11 @@ class Blog extends Model
         "source", "is_series", "is_top"
     ];
 
+    public $fillData = [
+        "title", "img_path", "key_word", "user_id", "sort", "post_status",
+        "source", "is_series", "is_top"
+    ];
+
     protected $appends = [
         'diffTime'
     ];
