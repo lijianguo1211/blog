@@ -136,8 +136,12 @@ class BlogServices implements HomeInterface
                 ->with(['BlogDetail' => function ($query) {
                     $query->select('blog_id', 'content_html', 'id');
                 }])
-                ->with('tags')
-                ->with('categories')
+                ->with(['tags' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::TAG_TYPE);
+                }])
+                ->with(['categories' => function ($query) {
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::CATEGORY_TYPE);
+                }])
                 ->first();
 
             if (empty($result)) {
@@ -166,10 +170,10 @@ class BlogServices implements HomeInterface
                     $query->select('blog_id', 'content_html', 'id');
                 }])
                 ->with(['tags' => function ($query) {
-                    $query->where("jay_blog_tag_categories.type", self::TAG);
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::TAG_TYPE);
                 }])
                 ->with(['categories' => function ($query) {
-                    $query->where("jay_blog_tag_categories.type", self::CATEGORY);
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::CATEGORY_TYPE);
                 }])
                 ->first();
 
@@ -201,10 +205,10 @@ class BlogServices implements HomeInterface
                     $query->select('blog_id', 'content_html', 'id');
                 }])
                 ->with(['tags' => function ($query) {
-                    $query->where("jay_blog_tag_categories.type", self::TAG);
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::TAG_TYPE);
                 }])
                 ->with(['categories' => function ($query) {
-                    $query->where("jay_blog_tag_categories.type", self::CATEGORY);
+                    $query->where("jay_blog_tag_categories.type", TagOrCategoryService::CATEGORY_TYPE);
                 }])
                 ->limit($this->getBlogNumber())
                 ->offset($offset * $this->getBlogNumber())

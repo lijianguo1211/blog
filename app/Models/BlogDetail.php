@@ -45,6 +45,6 @@ class BlogDetail extends Model
 
         $str = strip_tags($this->content_html);
 
-        return  mb_substr($str, 0, 200) . '...';
+        return  mb_substr($str, 0, 50) . '...';
     }
 }

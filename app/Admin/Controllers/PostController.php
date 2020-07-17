@@ -8,6 +8,7 @@ use App\Enume\SourceEnume;
 use App\Models\Blog;
 use App\Models\BlogDetail;
 use App\Service\CategoryService;
+use App\Service\TagOrCategoryService;
 use App\Service\TagService;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -98,7 +99,7 @@ class PostController extends BaseController
         if ($id) {
             $defaultM = Blog::where('id', $id)
                 ->with('BlogDetail')->first()->toArray();
-
+            $tagOrCategory = new TagOrCategoryService();
             $title = $defaultM['title'];
             $key_word = $defaultM['key_word'];
             $sort = $defaultM['sort'];
@@ -107,7 +108,8 @@ class PostController extends BaseController
             $is_series = $defaultM['is_series'];
             $is_top = $defaultM['is_top'];
             $content_md = $defaultM['blog_detail']['content_md'];
-            $tag = $category = 0;
+            $tag = $tagOrCategory->encodeData($id)['tag'];
+            $category = $tagOrCategory->encodeData($id)['category'];
         } else {
             $title = $key_word = $sort = $post_status = $source = $is_series = $is_top = $content_md = "";
             $tag = $category = 0;
@@ -118,7 +120,7 @@ class PostController extends BaseController
         $form->text('key_word', __('关键字'))->default($key_word);
 
         $form->select('categories', __('分类'))->options($categorySer->get())->default($category);
-        $form->multipleSelect('tag', __('标签'))->options($tagSer->get())->default($tag);
+        $form->multipleSelect('tags', __('标签'))->options($tagSer->get())->default($tag);
 
         $form->editormd('content_md', '文章内容')->default($content_md);
         $form->number('sort', __('排序'))->default($sort);
@@ -140,7 +142,12 @@ class PostController extends BaseController
         return $form;
     }
 
-    public function store(Blog $blog, BlogDetail $blogDetail, Parsedown $parsedown)
+    public function store(
+        Blog $blog,
+        BlogDetail $blogDetail,
+        Parsedown $parsedown,
+        TagOrCategoryService $tagOrCategoryService
+    )
     {
         $postDetail = [
             'blog_id' => 0,
@@ -148,15 +155,48 @@ class PostController extends BaseController
             'content_md' => request('content_md'),
         ];
 
+        $categoryData = [
+            'term_id' => request('categories'),
+            'blog_id' => 0,
+            'type' => $tagOrCategoryService::CATEGORY_TYPE
+        ];
+        $tags = request('tags');
+        $tags = array_filter($tags);
+
         try {
-            $resultBlog = $blog->create($this->fillData(request()->all(), $blog));
+            \DB::transaction(function () use (
+                $blog,
+                $blogDetail,
+                $tagOrCategoryService,
+                $postDetail,
+                $categoryData,
+                $tags
+            ){
+                $resultBlog = $blog->create($this->fillData(request()->all(), $blog));
 
-            if (empty($resultBlog)) {
-                throw new \Exception('error!');
-            }
-            $postDetail['blog_id'] = $resultBlog->id;
+                if (empty($resultBlog)) {
+                    throw new \Exception('error!');
+                }
+                $postDetail['blog_id'] = $resultBlog->id;
 
-            $blogDetail->create($postDetail);
+                $blogDetail->create($postDetail);
+
+                $categoryData['blog_id'] = $resultBlog->id;
+
+                $tagOrCategoryService->create($categoryData);
+                $tagData = [];
+                foreach ($tags as $item) {
+                    $tagData[] = [
+                        'blog_id' => $resultBlog->id,
+                        'type' => $tagOrCategoryService::TAG_TYPE,
+                        'term_id' => $item,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                $tagOrCategoryService->createMultiple($tagData);
+            }, 2);
 
             $result = ['message' => 'success', 'code' => 200];
         } catch (\Exception $e) {
@@ -170,7 +210,13 @@ class PostController extends BaseController
         }
     }
 
-    public function update(int $id, Blog $blog, BlogDetail $blogDetail, Parsedown $parsedown)
+    public function update(
+        int $id,
+        Blog $blog,
+        BlogDetail $blogDetail,
+        Parsedown $parsedown,
+        TagOrCategoryService $tagOrCategoryService
+    )
     {
         try {
             $postDetail = [
@@ -178,21 +224,53 @@ class PostController extends BaseController
                 'content_md' => request('content_md'),
             ];
 
-            $model = $blogDetail->find($id);
-            foreach ($postDetail as $key => $item) {
-                $model->$key = $item;
-            }
-            $model->save();
-            $data = $this->fillData(request()->all(), $blog);
+            \DB::transaction(function () use (
+                $id,
+                $postDetail,
+                $blogDetail,
+                $blog,
+                $tagOrCategoryService
+            ) {
+                $model = $blogDetail->find($id);
+                foreach ($postDetail as $key => $item) {
+                    $model->$key = $item;
+                }
+                $model->save();
 
-            $model = $blog->find($id);
+                $data = $this->fillData(request()->all(), $blog);
 
-            foreach ($data as $key => $item) {
-                $model->$key = $item;
-            }
+                $model = $blog->find($id);
 
-            $model->save();
+                foreach ($data as $key => $item) {
+                    $model->$key = $item;
+                }
+                $model->save();
 
+                $tagOrCategoryService->delete($id);
+
+                $categoryData = [
+                    'term_id' => request('categories'),
+                    'blog_id' => $id,
+                    'type' => $tagOrCategoryService::CATEGORY_TYPE
+                ];
+
+                $tagOrCategoryService->create($categoryData);
+
+                $tags = request('tags');
+                $tags = array_filter($tags);
+                $tagData = [];
+                foreach ($tags as $item) {
+                    $tagData[] = [
+                        'blog_id' => $id,
+                        'type' => $tagOrCategoryService::TAG_TYPE,
+                        'term_id' => $item,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                $tagOrCategoryService->createMultiple($tagData);
+            });
             $result = ['message' => 'success', 'code' => 200];
         } catch (\Exception $e) {
             $result = ['message' => $e->getMessage(), 'code' => 50001];
@@ -216,10 +294,14 @@ class PostController extends BaseController
                 $data[$key] = ($item === 'on' ? 1 : 0);
             }
 
-            if ($key === 'img_path') {
+            if ($key === 'img_path' && request()->hasFile('img_path')) {
                 $data[$key] = \Storage::disk('jay')
                     ->putFile('/jay/blog/' . date('Y-m-d') , request()->file('img_path'));
             }
+        }
+
+        if (!request()->hasFile('img_path')) {
+            unset($data['img_path']);
         }
         $data['title'] = request('title');
         return $data;

@@ -10928,3 +10928,18 @@ a.text-dark:focus {
   }
 }
 
+#toTop {
+  display: block;
+  position: fixed;
+  bottom: 40px;
+  right: 20px;
+  z-index: 99999;
+  outline: none;
+  background-color: #666b6d;
+  color: #eeeeee;
+  cursor: pointer;
+  padding: 7px 10px;
+  border-radius: 4px;
+  opacity: 0.5;
+}
+

@@ -12,18 +12,27 @@
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a class="a-remove-line" href="{{ route('home.index') }}">Home</a></li>
                         <li class="breadcrumb-item"><a class="a-remove-line" href="{{ route('home.blog') }}">Blog</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">分类</li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            @if(!empty($blogDetail['categories']))
+                                {{ $blogDetail['categories'][0]['categories_name'] }}
+                            @endif
+                        </li>
                     </ol>
                 </nav>
                 @if(!empty($blogDetail))
                     <div class="blog-post">
                         <div>
                             <h2 class="blog-post-title">{{ $blogDetail['title'] }}</h2>
-                            <p class="blog-post-meta">{{ $blogDetail['created_at'] }} <a href="#">Mark</a></p>
-{{--                            <svg class="bi bi-eye-fill float-right" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">--}}
-{{--                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>--}}
-{{--                                <path fill-rule="evenodd" d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>--}}
-{{--                            </svg>--}}
+                            <div class="blog-post-meta">{{ $blogDetail['created_at'] }}
+                                <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-person-circle" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M13.468 12.37C12.758 11.226 11.195 10 8 10s-4.757 1.225-5.468 2.37A6.987 6.987 0 0 0 8 15a6.987 6.987 0 0 0 5.468-2.63z"/>
+                                    <path fill-rule="evenodd" d="M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                                    <path fill-rule="evenodd" d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
+                                </svg>
+                                <em class="jay-name"> LIYI </em>
+                            </div>
+
+
                         </div>
 
                         <div class="language-php-jay">

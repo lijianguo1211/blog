@@ -136,3 +136,15 @@ function ajaxGetManyBlog(page, that, url, type)
     });
 }
 
+$('#toTop').on('click', function (e) {
+    e.preventDefault();
+    $('html,body').animate({scrollTop: 0}, 500);
+});
+
+$(window).scroll(function() {
+    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+        $('#toTop').fadeIn(500);
+    } else {
+        $('#toTop').fadeOut(500);
+    }
+});

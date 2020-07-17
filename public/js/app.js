@@ -56576,6 +56576,20 @@ function ajaxGetManyBlog(page, that, url, type) {
   });
 }
 
+$('#toTop').on('click', function (e) {
+  e.preventDefault();
+  $('html,body').animate({
+    scrollTop: 0
+  }, 500);
+});
+$(window).scroll(function () {
+  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+    $('#toTop').fadeIn(500);
+  } else {
+    $('#toTop').fadeOut(500);
+  }
+});
+
 /***/ }),
 
 /***/ "./resources/js/bootstrap.js":
@@ -56697,10 +56711,10 @@ window.simplemde = simplemde;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\js\app.js */"./resources/js/app.js");
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\home.scss */"./resources/sass/home.scss");
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\app.scss */"./resources/sass/app.scss");
-module.exports = __webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\time.scss */"./resources/sass/time.scss");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\js\app.js */"./resources/js/app.js");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\home.scss */"./resources/sass/home.scss");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\app.scss */"./resources/sass/app.scss");
+module.exports = __webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\time.scss */"./resources/sass/time.scss");
 
 
 /***/ }),

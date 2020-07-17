@@ -17,7 +17,8 @@ class TagOrCategoryService
     private $tagOrCategory;
 
     const TAG_TYPE = 1;
-    const CATEGORY = 1;
+
+    const CATEGORY_TYPE = 2;
 
     public function __construct()
     {
@@ -36,8 +37,50 @@ class TagOrCategoryService
         return $result;
     }
 
-    protected function encodeData(int $id)
+    public function encodeData(int $id)
     {
-        collect()->where('type', '');
+        $data = $this->get($id);
+
+        $tag = collect($data)->where('type', self::TAG_TYPE)->pluck('term_id')->all();
+
+        $category = collect($data)->where('type', self::CATEGORY_TYPE)->implode('term_id');
+
+        return [
+            'tag' => $tag,
+            'category' => $category,
+        ];
+    }
+
+    public function create(array $data)
+    {
+        try {
+            $result = $this->tagOrCategory->create($data);
+        } catch (\Exception $e) {
+            $result = [];
+        }
+
+        return $result;
+    }
+
+    public function createMultiple(array $data)
+    {
+        try {
+            $result = $this->tagOrCategory->insert($data);
+        } catch (\Exception $e) {
+            $result = [];
+        }
+
+        return $result;
+    }
+
+    public function delete(int $id)
+    {
+        try {
+            $result = $this->tagOrCategory->where('blog_id', $id)->delete();
+        } catch (\Exception $e) {
+            $result = [];
+        }
+
+        return $result;
     }
 }
