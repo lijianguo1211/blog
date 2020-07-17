@@ -409,7 +409,8 @@ return [
                     'path' => '/vendor/laravel-admin-ext/editormd/editormd-1.5.0/lib/',
                     'width' => '100%',
                     'height' => 600,
-                    'emoji' => true
+                    'emoji' => true,
+                    'watch' => false
                 ]
         ]
     ],

@@ -200,6 +200,7 @@ class PostController extends BaseController
 
             $result = ['message' => 'success', 'code' => 200];
         } catch (\Exception $e) {
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
             $result = ['message' => $e->getMessage(), 'code' => 50001];
         }
 
@@ -273,6 +274,7 @@ class PostController extends BaseController
             });
             $result = ['message' => 'success', 'code' => 200];
         } catch (\Exception $e) {
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
             $result = ['message' => $e->getMessage(), 'code' => 50001];
         }
 
