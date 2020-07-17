@@ -19,3 +19,5 @@
  */
 
 Encore\Admin\Form::forget(['map', 'editor']);
+\Encore\Admin\Admin::js("/js/jquery_slugit.js");
+

@@ -7,6 +7,8 @@ use App\Enume\PostStatusEnume;
 use App\Enume\SourceEnume;
 use App\Models\Blog;
 use App\Models\BlogDetail;
+use App\Service\CategoryService;
+use App\Service\TagService;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
@@ -81,15 +83,18 @@ class PostController extends BaseController
     }
 
     /**
-     * Make a form builder.
-     *
+     * Notes:
+     * User: LiYi
+     * Date: 2020/7/17 0017
+     * Time: 17:04
      * @param int $id
      * @return Form
      */
     protected function form(int $id)
     {
         $form = new Form(new Blog());
-
+        $tagSer = new TagService();
+        $categorySer = new CategoryService();
         if ($id) {
             $defaultM = Blog::where('id', $id)
                 ->with('BlogDetail')->first()->toArray();
@@ -102,13 +107,18 @@ class PostController extends BaseController
             $is_series = $defaultM['is_series'];
             $is_top = $defaultM['is_top'];
             $content_md = $defaultM['blog_detail']['content_md'];
+            $tag = $category = 0;
         } else {
             $title = $key_word = $sort = $post_status = $source = $is_series = $is_top = $content_md = "";
+            $tag = $category = 0;
         }
 
         $form->text('title', __('文章标题'))->default($title);
         $form->image('img_path', __('文章缩略图'));
         $form->text('key_word', __('关键字'))->default($key_word);
+
+        $form->select('categories', __('分类'))->options($categorySer->get())->default($category);
+        $form->multipleSelect('tag', __('标签'))->options($tagSer->get())->default($tag);
 
         $form->editormd('content_md', '文章内容')->default($content_md);
         $form->number('sort', __('排序'))->default($sort);
