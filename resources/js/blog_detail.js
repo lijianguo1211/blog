@@ -148,3 +148,8 @@ $(window).scroll(function() {
         $('#toTop').fadeOut(500);
     }
 });
+
+
+$(document).on('click', '.jay-ajax-search', function () {
+
+})
