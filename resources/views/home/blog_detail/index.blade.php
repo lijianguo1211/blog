@@ -135,36 +135,48 @@
                 </div>
 
                 <div class="p-4">
-                    <h4 class="font-italic">阅读推荐</h4>
-                    <ol class="list-unstyled mb-0">
+                    <h4>阅读推荐</h4>
+                    <ul class="list-group">
                         @foreach($rankingList as $item)
-                            <li><a class="text-secondary a-remove-line" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <a class="list-group-item list-group-item-action list-group-item-light d-flex justify-content-between align-items-center" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}<span class="badge jay-badge badge-pill">{{ $item['reading_volume'] }}</span></a>
                         @endforeach
-                    </ol>
+                    </ul>
                 </div>
 
                 <div class="p-4">
-                    <h4 class="font-italic">点击排行榜</h4>
-                    <ol class="list-unstyled mb-0">
+                    <h4>点击排行榜</h4>
+                    <ul class="list-group">
                         @foreach($likesList as $item)
-                            <li><a class="text-secondary a-remove-line" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}</a></li>
+                            <a class="list-group-item list-group-item-action list-group-item-light d-flex justify-content-between align-items-center" href="{{ route('home.blog_details', ['id' => $item['id']]) }}">{{ $item['title'] }}<span class="badge jay-badge badge-pill">{{ $item['likes_volume'] }}</span></a>
                         @endforeach
-                    </ol>
+                    </ul>
                 </div>
 
+                @if(!empty($seriesList))
+                    <div class="p-4">
+                        <h4>系列文章</h4>
+                        <ul class="list-group">
+                            @foreach($seriesList as $item)
+                            <a href="{{ route('home.blog_details', ['id' => $item['id']]) }}" class="list-group-item list-group-item-action list-group-item-light d-flex justify-content-between align-items-center">{{ $item['title'] }}<span class="badge jay-badge badge-pill">{{ $item['reading_volume'] }}</span></a>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+
                 <div class="p-4">
-                    <h4 class="font-italic">友情链接</h4>
-                    <ol class="list-unstyled">
+                    <h4>友情链接</h4>
+                    <ul class="list-group">
                         @empty($linkService)
-                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://www.zhihu.com/">ZhiHu</a></li>
-                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://github.com/">GitHub</a></li>
-                            <li><a class="text-secondary a-remove-line" target="_blank" href="https://laravel.com/">Laravel</a></li>
+                            <a class="list-group-item list-group-item-action list-group-item-light" target="_blank" href="https://www.zhihu.com/">ZhiHu</a>
+                            <a class="list-group-item list-group-item-action list-group-item-light" target="_blank" href="https://github.com/">GitHub</a>
+                            <a class="list-group-item list-group-item-action list-group-item-light" target="_blank" href="https://laravel.com/">Laravel</a>
                         @else
                             @foreach($linkService as $item)
-                                <li><a class="text-secondary a-remove-line" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a></li>
+                                <a class="list-group-item list-group-item-action list-group-item-light" target="_blank" href="{{ $item['title_slug'] }}">{{ $item['title'] }}</a>
                             @endforeach
                         @endempty
-                    </ol>
+                    </ul>
                 </div>
             </aside><!-- /.blog-sidebar -->
 

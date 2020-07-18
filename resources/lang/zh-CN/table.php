@@ -22,4 +22,10 @@ return [
     'parent' => "父级",
     'createdAt' => '创建时间',
     'updatedAt' => '修改时间',
+    'newsTitle' => '热点标题',
+    'newsContent' => '热点内容',
+    'newsSlug' => '热点详情',
+    'newsOrder' => '热点排序',
+    'newsStatus' => '热点状态',
+
 ];

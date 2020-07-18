@@ -14,6 +14,7 @@ use App\Models\Blog;
 use Illuminate\Queue\Capsule\Manager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Enume\IsSeriesEnume;
 
 class BlogServices implements HomeInterface
 {
@@ -95,27 +96,49 @@ class BlogServices implements HomeInterface
     public function getData()
     {
         // TODO: Implement getData() method.
+        $news = new NewsService();
         return [
             'topBlog' => $this->isTopBlog(),
             'allBlog' => $this->blogAll(),
             'rankingList' => $this->rankingList(),
             'likesList' => $this->likesList(),
+            'news' => $news->getData()
         ];
     }
 
 
     public function showDetail(int $id)
     {
+        $blogDetail = $this->showBlog($id);
+        $seriesList = $this->seriesList();
         return [
             'rankingList' => $this->rankingList(),
-            'blogDetail' => $this->showBlog($id),
+            'blogDetail' => $blogDetail,
             'likesList' => $this->likesList(),
+            'seriesList' => $seriesList
         ];
     }
 
     public function onlyBlogList(int $offset = 0, bool $isTop = false)
     {
         return ['onlyBlogList' => $this->blogAll($isTop, $offset)];
+    }
+
+    public function seriesList()
+    {
+        try {
+                $result = $this->blog->newQuery()
+                ->where('is_series', IsSeriesEnume::IS_SERIES)
+                ->where('post_status', $this->getPostStatus())
+                ->orderBy('sort')
+                ->limit($this->blogNumber)
+                ->get(['id', 'title', 'reading_volume'])->toArray();
+        } catch (\Exception $e) {
+            $result = [];
+            \Log::error(__CLASS__ . ' in ' .__FUNCTION__ . ' error:' . $e->getMessage());
+        }
+
+        return $result;
     }
 
     /**
@@ -235,7 +258,7 @@ class BlogServices implements HomeInterface
             $result = $this->blog->where('post_status', $this->getPostStatus())
                 ->orderByDesc('reading_volume')
                 ->limit($this->getRankingNumber())
-                ->get(['title', 'id'])->toArray();
+                ->get(['title', 'id', 'reading_volume'])->toArray();
         } catch (\Exception $e) {
             $result = [
                 'id' => 0,
@@ -253,7 +276,7 @@ class BlogServices implements HomeInterface
             $result = $this->blog->where('post_status', $this->getPostStatus())
                 ->orderByDesc('likes_volume')
                 ->limit($this->getLikesNumber())
-                ->get(['title', 'id'])->toArray();
+                ->get(['title', 'id', 'likes_volume'])->toArray();
         } catch (\Exception $e) {
             $result = [
                 'id' => 0,
