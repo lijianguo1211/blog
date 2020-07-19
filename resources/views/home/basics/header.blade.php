@@ -5,7 +5,7 @@
                 <a class="blog-header-logo text-dark" href="/">LiYi</a>
             </div>
             <div class="col-4 d-flex justify-content-end align-items-center">
-                <form id="jay-search-all">
+                <form id="jay-search-all  my-2 my-lg-0">
                     <div class="form-inline">
                         <div class="jay-search">
                             <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">

@@ -259,3 +259,11 @@ h6 {
   color: #0c0c0c;
 }
 
+.jay-tab-content {
+  min-height: 300px;
+  -webkit-margin-before: 20px;
+          margin-block-start: 20px;
+  -webkit-margin-after: auto;
+          margin-block-end: auto;
+}
+
