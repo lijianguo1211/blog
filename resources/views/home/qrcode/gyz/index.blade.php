@@ -8,12 +8,7 @@
     <main role="main" class="container">
 
         <div class="jay-alert">
-            <div class="alert alert-dark alert-dismissible fade show" role="alert">
-                <strong>Holy guacamole!</strong> You should check in on some of those fields below.
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
+
         </div>
 
         <nav>
@@ -29,31 +24,40 @@
                 </a>
             </div>
         </nav>
-        <div class="col-md-8">
-            <div class="tab-content jay-tab-content" id="nav-tabContent">
-                <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-home-tab">
-                    <div class="qrcode-content-form">
-                        <div class="form-group">
-                            <label for="qrcode-content">文本内容</label>
-                            <textarea class="form-control" placeholder="请输入文本内容" id="qrcode-content" rows="6"></textarea>
-                        </div>
+        <div class="row jay-row-qrcode">
+            <div class="col-md-8">
+                <div class="tab-content jay-tab-content" id="nav-tabContent">
+                    <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-home-tab">
+                        <div class="qrcode-content-form">
+                            <div class="form-group">
+                                <label for="qrcode-content">文本内容</label>
+                                <textarea class="form-control" placeholder="请输入文本内容" id="qrcode-content" rows="6"></textarea>
+                                <input type="hidden" name="ajaxUrl" value="{{ route('home.gyz.ajaxTest') }}">
+                            </div>
 
-                        <button class="btn btn-primary qrcode-content-submit">生成二维码</button>
+                            <button class="btn btn-primary qrcode-content-submit">生成二维码</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="nav-website" role="tabpanel" aria-labelledby="nav-profile-tab">
+                        <form action="">
+                            <div class="mb-3">
+                                <div class="form-group">
+                                    <label for="qrcode-website">把网址直接生成二维码，扫描访问</label>
+                                    <input type="text" class="form-control" placeholder="http://" id="qrcode-website" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">生成二维码</button>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="nav-img" role="tabpanel" aria-labelledby="nav-contact-tab">
+                        Et et consectetur ipsum labore excepteur est proident excepteur ad velit occaecat qui minim occaecat veniam. Fugiat veniam incididunt anim aliqua enim pariatur veniam sunt est aute sit dolor anim. Velit non irure adipisicing aliqua ullamco irure incididunt irure non esse consectetur nostrud minim non minim occaecat.
                     </div>
                 </div>
-                <div class="tab-pane fade" id="nav-website" role="tabpanel" aria-labelledby="nav-profile-tab">
-                    <form action="">
-                        <div class="mb-3">
-                            <div class="form-group">
-                                <label for="qrcode-website">把网址直接生成二维码，扫描访问</label>
-                                <input type="text" class="form-control" placeholder="http://" id="qrcode-website" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">生成二维码</button>
-                    </form>
-                </div>
-                <div class="tab-pane fade" id="nav-img" role="tabpanel" aria-labelledby="nav-contact-tab">
-                    Et et consectetur ipsum labore excepteur est proident excepteur ad velit occaecat qui minim occaecat veniam. Fugiat veniam incididunt anim aliqua enim pariatur veniam sunt est aute sit dolor anim. Velit non irure adipisicing aliqua ullamco irure incididunt irure non esse consectetur nostrud minim non minim occaecat.
+            </div>
+
+            <div class="col-md-4">
+                <div class="jay-qrocde-show">
+
                 </div>
             </div>
         </div>

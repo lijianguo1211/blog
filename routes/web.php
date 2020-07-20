@@ -15,6 +15,7 @@ Route::namespace('Home')->as('home.')->group(function ($group) {
     Route::namespace('Qrcode')->prefix('qrcode')->as('gyz.')
         ->group(function ($group) {
         $group->get('/', 'GongYongZhengController@index')->name('index');
+        $group->get('ajaxTest', 'AjaxQrcodeController@textQrcode')->name('ajaxTest');
     });
 
     $group->get('/', 'IndexController@index')->name('index');

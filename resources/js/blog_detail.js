@@ -156,14 +156,91 @@ $(document).on('click', '.jay-ajax-search', function () {
 
 $(document).on('click', '.qrcode-content-submit', function () {
     let text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
-    console.log(123);
-    try {
-
-    } catch (e) {
-        console.log(e);
-    }
 
     if (!text) {
-
+        let htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
+        $('.jay-alert').html(htmlAlert);
+        return false;
     }
+    let url = $(this).closest('.qrcode-content-form').find("[name=ajaxUrl]").val();
+    $.ajax({
+        url: url,
+        data: {'text': text},
+        dataType: 'json',
+        type: 'GET',
+        success: function (res) {
+            if (res.code === 200 && res.status) {
+                $('.jay-qrocde-show').html(res.data);
+            } else {
+
+            }
+        },
+        error: function (error) {
+            console.log(error);
+        }
+    });
 });
+
+
+
+function alertMessage(title, message, time, level)
+{
+    let alertLevel = '';
+    if (typeof level === 'number') {
+        alertLevel = switchAlert(level);
+    } else if (typeof level === 'string') {
+        alertLevel = level;
+    } else {
+        alertLevel = 'alert-dark';
+    }
+
+    let alertHtml = '<div role="alert" class="alert alert-dismissible fade show '+alertLevel+'">';
+    alertHtml += '<strong class="alert-title">'+title+'</strong>';
+    alertHtml += '<span class="alert-message">'+message+'</span>';
+    alertHtml += '<button type="button" class="close" data-dismiss="alert" aria-label="Close">';
+    alertHtml += '<span aria-hidden="true">&times;</span>';
+    alertHtml += '</button>';
+    alertHtml += '</div>';
+
+    window.setTimeout(function(){
+        $('[data-dismiss="alert"]').alert('close');
+    },time);
+
+    return alertHtml;
+}
+
+function switchAlert(levelNumber)
+{
+    let messageAlert = 'alert-';
+    switch (levelNumber) {
+        case 1:
+            messageAlert += 'primary';
+            break;
+        case 2:
+            messageAlert += 'secondary';
+            break;
+        case 3:
+            messageAlert += 'success';
+            break;
+        case 4:
+            messageAlert += 'danger';
+            break;
+        case 5:
+            messageAlert += 'warning';
+            break;
+        case 6:
+            messageAlert += 'info';
+            break;
+        case 7:
+            messageAlert += 'light';
+            break;
+        case 8:
+            messageAlert += 'dark';
+            break;
+        default:
+            messageAlert += 'primary';
+            break;
+    }
+
+    return messageAlert;
+}

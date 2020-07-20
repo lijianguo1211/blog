@@ -10,13 +10,33 @@
 namespace App\Http\Controllers\Home\Qrcode;
 
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Home\BaseAjaxController;
 use Illuminate\Http\Request;
 
-class AjaxQrcodeController extends Controller
+class AjaxQrcodeController extends BaseAjaxController
 {
     public function textQrcode(Request $request)
     {
-        dd($request->all());
+        if (empty($request->get('text'))) {
+            return $this->setCode(50001)
+                ->setMessage('待转化的文字为空')
+                ->ajaxResponse();
+        }
+
+        try {
+            $html = \QrCode::size(150)
+                ->encoding('UTF-8')
+                ->generate($request->get('text'));
+            $result = [
+                'data' => $html
+            ];
+        } catch (\Exception $e) {
+            $result = [
+                'message' => $e->getMessage(),
+                'status' => false
+            ];
+        }
+
+        return $this->ajaxResponse($result);
     }
 }

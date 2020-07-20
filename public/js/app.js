@@ -18504,6 +18504,20 @@ module.exports = function (it) {
 
 /***/ }),
 
+/***/ "./node_modules/core-js/internals/engine-user-agent.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/engine-user-agent.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var getBuiltIn = __webpack_require__(/*! ../internals/get-built-in */ "./node_modules/core-js/internals/get-built-in.js");
+
+module.exports = getBuiltIn('navigator', 'userAgent') || '';
+
+
+/***/ }),
+
 /***/ "./node_modules/core-js/internals/enum-bug-keys.js":
 /*!*********************************************************!*\
   !*** ./node_modules/core-js/internals/enum-bug-keys.js ***!
@@ -19867,6 +19881,45 @@ if (isForced(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumb
   NumberPrototype.constructor = NumberWrapper;
   redefine(global, NUMBER, NumberWrapper);
 }
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/modules/web.timers.js":
+/*!****************************************************!*\
+  !*** ./node_modules/core-js/modules/web.timers.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__(/*! ../internals/export */ "./node_modules/core-js/internals/export.js");
+var global = __webpack_require__(/*! ../internals/global */ "./node_modules/core-js/internals/global.js");
+var userAgent = __webpack_require__(/*! ../internals/engine-user-agent */ "./node_modules/core-js/internals/engine-user-agent.js");
+
+var slice = [].slice;
+var MSIE = /MSIE .\./.test(userAgent); // <- dirty ie9- check
+
+var wrap = function (scheduler) {
+  return function (handler, timeout /* , ...arguments */) {
+    var boundArgs = arguments.length > 2;
+    var args = boundArgs ? slice.call(arguments, 2) : undefined;
+    return scheduler(boundArgs ? function () {
+      // eslint-disable-next-line no-new-func
+      (typeof handler == 'function' ? handler : Function(handler)).apply(this, args);
+    } : handler, timeout);
+  };
+};
+
+// ie9- setTimeout & setInterval additional parameters fix
+// https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#timers
+$({ global: true, bind: true, forced: MSIE }, {
+  // `setTimeout` method
+  // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout
+  setTimeout: wrap(global.setTimeout),
+  // `setInterval` method
+  // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval
+  setInterval: wrap(global.setInterval)
+});
 
 
 /***/ }),
@@ -56436,6 +56489,8 @@ __webpack_require__(/*! core-js/modules/es.array.find */ "./node_modules/core-js
 
 __webpack_require__(/*! core-js/modules/es.number.constructor */ "./node_modules/core-js/modules/es.number.constructor.js");
 
+__webpack_require__(/*! core-js/modules/web.timers */ "./node_modules/core-js/modules/web.timers.js");
+
 $(".new_a_liyi").on('click', function () {
   var url = '';
   var number = Number($(this).find('.likes_count').text());
@@ -56592,14 +56647,99 @@ $(window).scroll(function () {
 $(document).on('click', '.jay-ajax-search', function () {});
 $(document).on('click', '.qrcode-content-submit', function () {
   var text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
-  console.log(123);
 
-  try {} catch (e) {
-    console.log(e);
+  if (!text) {
+    var htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
+    $('.jay-alert').html(htmlAlert);
+    return false;
   }
 
-  if (!text) {}
+  var url = $(this).closest('.qrcode-content-form').find("[name=ajaxUrl]").val();
+  $.ajax({
+    url: url,
+    data: {
+      'text': text
+    },
+    dataType: 'json',
+    type: 'GET',
+    success: function success(res) {
+      if (res.code === 200 && res.status) {
+        $('.jay-qrocde-show').html(res.data);
+      } else {}
+    },
+    error: function error(_error) {
+      console.log(_error);
+    }
+  });
 });
+
+function alertMessage(title, message, time, level) {
+  var alertLevel = '';
+
+  if (typeof level === 'number') {
+    alertLevel = switchAlert(level);
+  } else if (typeof level === 'string') {
+    alertLevel = level;
+  } else {
+    alertLevel = 'alert-dark';
+  }
+
+  var alertHtml = '<div role="alert" class="alert alert-dismissible fade show ' + alertLevel + '">';
+  alertHtml += '<strong class="alert-title">' + title + '</strong>';
+  alertHtml += '<span class="alert-message">' + message + '</span>';
+  alertHtml += '<button type="button" class="close" data-dismiss="alert" aria-label="Close">';
+  alertHtml += '<span aria-hidden="true">&times;</span>';
+  alertHtml += '</button>';
+  alertHtml += '</div>';
+  window.setTimeout(function () {
+    $('[data-dismiss="alert"]').alert('close');
+  }, time);
+  return alertHtml;
+}
+
+function switchAlert(levelNumber) {
+  var messageAlert = 'alert-';
+
+  switch (levelNumber) {
+    case 1:
+      messageAlert += 'primary';
+      break;
+
+    case 2:
+      messageAlert += 'secondary';
+      break;
+
+    case 3:
+      messageAlert += 'success';
+      break;
+
+    case 4:
+      messageAlert += 'danger';
+      break;
+
+    case 5:
+      messageAlert += 'warning';
+      break;
+
+    case 6:
+      messageAlert += 'info';
+      break;
+
+    case 7:
+      messageAlert += 'light';
+      break;
+
+    case 8:
+      messageAlert += 'dark';
+      break;
+
+    default:
+      messageAlert += 'primary';
+      break;
+  }
+
+  return messageAlert;
+}
 
 /***/ }),
 
@@ -56722,10 +56862,10 @@ window.simplemde = simplemde;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\js\app.js */"./resources/js/app.js");
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\home.scss */"./resources/sass/home.scss");
-__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\app.scss */"./resources/sass/app.scss");
-module.exports = __webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\time.scss */"./resources/sass/time.scss");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\js\app.js */"./resources/js/app.js");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\home.scss */"./resources/sass/home.scss");
+__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\app.scss */"./resources/sass/app.scss");
+module.exports = __webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\time.scss */"./resources/sass/time.scss");
 
 
 /***/ }),

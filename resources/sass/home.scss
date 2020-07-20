@@ -231,8 +231,20 @@ h1, h2, h3, h4, h5, h6 {
     color: #0c0c0c;
 }
 
-.jay-tab-content {
-    min-height: 300px;
+//.jay-tab-content {
+//    min-height: 400px;
+//    margin-block-start: 20px;
+//    margin-block-end: auto;
+//}
+.jay-alert .fade {
+    transition: opacity 3.5s linear!important;
+}
+
+.jay-row-qrcode {
+    min-height: 400px;
     margin-block-start: 20px;
     margin-block-end: auto;
+}
+.jay-qrocde-show {
+    margin-block-start: 32px;
 }
