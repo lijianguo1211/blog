@@ -56590,6 +56590,16 @@ $(window).scroll(function () {
   }
 });
 $(document).on('click', '.jay-ajax-search', function () {});
+$(document).on('click', '.qrcode-content-submit', function () {
+  var text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
+  console.log(123);
+
+  try {} catch (e) {
+    console.log(e);
+  }
+
+  if (!text) {}
+});
 
 /***/ }),
 
@@ -56712,10 +56722,10 @@ window.simplemde = simplemde;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\js\app.js */"./resources/js/app.js");
-__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\home.scss */"./resources/sass/home.scss");
-__webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\app.scss */"./resources/sass/app.scss");
-module.exports = __webpack_require__(/*! F:\LIYI\laravel-7\blog\resources\sass\time.scss */"./resources/sass/time.scss");
+__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\js\app.js */"./resources/js/app.js");
+__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\home.scss */"./resources/sass/home.scss");
+__webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\app.scss */"./resources/sass/app.scss");
+module.exports = __webpack_require__(/*! F:\LiYi-GitHub\blog\resources\sass\time.scss */"./resources/sass/time.scss");
 
 
 /***/ }),

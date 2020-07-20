@@ -153,3 +153,17 @@ $(window).scroll(function() {
 $(document).on('click', '.jay-ajax-search', function () {
 
 })
+
+$(document).on('click', '.qrcode-content-submit', function () {
+    let text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
+    console.log(123);
+    try {
+
+    } catch (e) {
+        console.log(e);
+    }
+
+    if (!text) {
+
+    }
+});

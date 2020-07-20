@@ -6,6 +6,16 @@
 
 @section('content')
     <main role="main" class="container">
+
+        <div class="jay-alert">
+            <div class="alert alert-dark alert-dismissible fade show" role="alert">
+                <strong>Holy guacamole!</strong> You should check in on some of those fields below.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        </div>
+
         <nav>
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
                 <a class="nav-item nav-link active" id="nav-home-tab" data-toggle="tab" href="#nav-text" role="tab" aria-controls="nav-home" aria-selected="true">
@@ -22,14 +32,14 @@
         <div class="col-md-8">
             <div class="tab-content jay-tab-content" id="nav-tabContent">
                 <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-home-tab">
-                    <form action="" method="get">
+                    <div class="qrcode-content-form">
                         <div class="form-group">
                             <label for="qrcode-content">文本内容</label>
                             <textarea class="form-control" placeholder="请输入文本内容" id="qrcode-content" rows="6"></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">生成二维码</button>
-                    </form>
+                        <button class="btn btn-primary qrcode-content-submit">生成二维码</button>
+                    </div>
                 </div>
                 <div class="tab-pane fade" id="nav-website" role="tabpanel" aria-labelledby="nav-profile-tab">
                     <form action="">

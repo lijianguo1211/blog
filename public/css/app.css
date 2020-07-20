@@ -10952,3 +10952,8 @@ a.text-dark:focus {
   background-color: #131212;
 }
 
+.jay-alert {
+  -webkit-margin-before: 20px;
+          margin-block-start: 20px;
+}
+
