@@ -276,3 +276,8 @@ h6 {
           margin-block-start: 32px;
 }
 
+.jay-qrcode-download {
+  -webkit-margin-before: 15px;
+          margin-block-start: 15px;
+}
+

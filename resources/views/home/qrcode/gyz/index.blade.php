@@ -12,14 +12,14 @@
         </div>
 
         <nav>
-            <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                <a class="nav-item nav-link active" id="nav-home-tab" data-toggle="tab" href="#nav-text" role="tab" aria-controls="nav-home" aria-selected="true">
+            <div class="nav nav-tabs" id="jay-nav-tab" role="tablist">
+                <a class="nav-item nav-link active" id="nav-text-tab" data-toggle="tab" href="#nav-text" role="tab" aria-controls="nav-text" aria-selected="true">
                     文本
                 </a>
-                <a class="nav-item nav-link" id="nav-profile-tab" data-toggle="tab" href="#nav-website" role="tab" aria-controls="nav-profile" aria-selected="false">
+                <a class="nav-item nav-link" id="nav-website-tab" data-toggle="tab" href="#nav-website" role="tab" aria-controls="nav-website" aria-selected="false">
                     网址
                 </a>
-                <a class="nav-item nav-link" id="nav-contact-tab" data-toggle="tab" href="#nav-img" role="tab" aria-controls="nav-contact" aria-selected="false">
+                <a class="nav-item nav-link" id="nav-img-tab" data-toggle="tab" href="#nav-img" role="tab" aria-controls="nav-img" aria-selected="false">
                     图片
                 </a>
             </div>
@@ -31,7 +31,7 @@
                         <div class="qrcode-content-form">
                             <div class="form-group">
                                 <label for="qrcode-content">文本内容</label>
-                                <textarea class="form-control" placeholder="请输入文本内容" id="qrcode-content" rows="6"></textarea>
+                                <textarea class="form-control" placeholder="请输入文本内容" id="qrcode-content" rows="10"></textarea>
                                 <input type="hidden" name="ajaxUrl" value="{{ route('home.gyz.ajaxTest') }}">
                             </div>
 
@@ -58,6 +58,9 @@
             <div class="col-md-4">
                 <div class="jay-qrocde-show">
 
+                </div>
+                <div class="jay-qrcode-download" style="display: none">
+                    <span class="btn btn-dark">download</span>
                 </div>
             </div>
         </div>

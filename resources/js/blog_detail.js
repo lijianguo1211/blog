@@ -156,29 +156,58 @@ $(document).on('click', '.jay-ajax-search', function () {
 
 $(document).on('click', '.qrcode-content-submit', function () {
     let text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
-
+    let htmlAlert = '';
     if (!text) {
-        let htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
+        htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
         $('.jay-alert').html(htmlAlert);
         return false;
     }
     let url = $(this).closest('.qrcode-content-form').find("[name=ajaxUrl]").val();
+
+    let data = {'text': text};
+    ajaxQrcode(data, url);
+});
+
+function ajaxQrcode(data, url)
+{
+    let htmlAlert = '';
     $.ajax({
         url: url,
-        data: {'text': text},
+        data: data,
         dataType: 'json',
         type: 'GET',
         success: function (res) {
             if (res.code === 200 && res.status) {
+                htmlAlert = alertMessage('success!!!', '', 3000, 3);
+                $('.jay-alert').html(htmlAlert);
                 $('.jay-qrocde-show').html(res.data);
-            } else {
 
+                let svgW = $('.jay-qrocde-show').find('svg').width();
+                // let downloadW = $('.jay-qrcode-download').find('span').outerWidth();
+                let downloadW = 96;
+                let pw = (svgW-downloadW) / 2;
+                $('.jay-qrcode-download').css('padding-left', pw);
+                $('.jay-qrcode-download').toggle();
+            } else {
+                htmlAlert = alertMessage('error!!!', res.message, 3000);
+                $('.jay-alert').html(htmlAlert);
             }
         },
         error: function (error) {
             console.log(error);
         }
     });
+}
+
+$(document).on('click', '.jay-qrcode-download', function () {
+    let url, data, navId;
+
+    navId =  $('#jay-nav-tab').find('.active').attr('aria-controls');
+
+    url = $("#"+navId).find("[name=ajaxUrl]").val();
+    console.log(url);
+    data = {text: $("#"+navId).find('#qrcode-content').val(), download: 'yes'};
+    ajaxQrcode(data, url);
 });
 
 

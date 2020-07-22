@@ -56647,30 +56647,60 @@ $(window).scroll(function () {
 $(document).on('click', '.jay-ajax-search', function () {});
 $(document).on('click', '.qrcode-content-submit', function () {
   var text = $(this).closest('.qrcode-content-form').find("#qrcode-content").val();
+  var htmlAlert = '';
 
   if (!text) {
-    var htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
+    htmlAlert = alertMessage('error!!!', '请添加需要转化的文字内容', 3000);
     $('.jay-alert').html(htmlAlert);
     return false;
   }
 
   var url = $(this).closest('.qrcode-content-form').find("[name=ajaxUrl]").val();
+  var data = {
+    'text': text
+  };
+  ajaxQrcode(data, url);
+});
+
+function ajaxQrcode(data, url) {
+  var htmlAlert = '';
   $.ajax({
     url: url,
-    data: {
-      'text': text
-    },
+    data: data,
     dataType: 'json',
     type: 'GET',
     success: function success(res) {
       if (res.code === 200 && res.status) {
+        htmlAlert = alertMessage('success!!!', '', 3000, 3);
+        $('.jay-alert').html(htmlAlert);
         $('.jay-qrocde-show').html(res.data);
-      } else {}
+        var svgW = $('.jay-qrocde-show').find('svg').width(); // let downloadW = $('.jay-qrcode-download').find('span').outerWidth();
+
+        var downloadW = 96;
+        var pw = (svgW - downloadW) / 2;
+        $('.jay-qrcode-download').css('padding-left', pw);
+        $('.jay-qrcode-download').toggle();
+      } else {
+        htmlAlert = alertMessage('error!!!', res.message, 3000);
+        $('.jay-alert').html(htmlAlert);
+      }
     },
     error: function error(_error) {
       console.log(_error);
     }
   });
+}
+
+$(document).on('click', '.jay-qrcode-download', function () {
+  var url, data, navId;
+  navId = $('#jay-nav-tab').find('.active').attr('aria-controls');
+  url = $("#" + navId).find("[name=ajaxUrl]").val();
+  console.log(url);
+  data = {
+    text: $("#" + navId).find('#qrcode-content').val(),
+    download: 'yes'
+  };
+  ajaxQrcode(data, url);
 });
 
 function alertMessage(title, message, time, level) {

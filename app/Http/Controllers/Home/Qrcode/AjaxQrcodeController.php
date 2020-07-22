@@ -15,6 +15,20 @@ use Illuminate\Http\Request;
 
 class AjaxQrcodeController extends BaseAjaxController
 {
+    protected function getTextQrcodeFile()
+    {
+        $dir = storage_path('app/public/qrcode');
+        if (!is_dir($dir)) {
+            mkdir($dir);
+        }
+        $file = $dir. '/download.png';
+        if (!file_exists($file)) {
+            touch($file);
+        }
+
+        return $file;
+    }
+
     public function textQrcode(Request $request)
     {
         if (empty($request->get('text'))) {
@@ -24,13 +38,19 @@ class AjaxQrcodeController extends BaseAjaxController
         }
 
         try {
-            $html = \QrCode::size(150)
-                ->encoding('UTF-8')
-                ->generate($request->get('text'));
+            if ($request->has('download') && $request->get('download') === 'yes') {
+                $html = \QrCode::format('png')->size(200)
+                    ->encoding('UTF-8')->generate($request->get('text'), $this->getTextQrcodeFile());
+            } else {
+                $html = \QrCode::size(200)
+                    ->encoding('UTF-8')->generate($request->get('text'));
+            }
+            //dd($html);
             $result = [
                 'data' => $html
             ];
         } catch (\Exception $e) {
+            \Log::error($e->getMessage());
             $result = [
                 'message' => $e->getMessage(),
                 'status' => false
