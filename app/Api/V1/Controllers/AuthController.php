@@ -3,7 +3,6 @@
 
 namespace App\Api\V1\Controllers;
 
-
 class AuthController extends BaseController
 {
     public function login()

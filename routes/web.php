@@ -11,7 +11,25 @@
 |
 */
 
-Route::namespace('Home')->as('home.')->group(function ($group) {
+//Route::group([
+//    'middleware' => 'api',
+//    'prefix' => 'auth'
+//], function ($router) {
+//    Route::post('login', 'AuthController@login');
+//    Route::post('logout', 'AuthController@logout');
+//    Route::post('refresh', 'AuthController@refresh');
+//    Route::post('me', 'AuthController@me');
+//});
+
+Route::prefix('auth')->name('auth.')->middleware('api')
+    ->group(function ($router) {
+        $router->post('login', 'AuthController@login');
+});
+
+
+
+Route::namespace('Home')->middleware('csrf')
+    ->as('home.')->group(function ($group) {
     Route::namespace('Qrcode')->prefix('qrcode')->as('gyz.')
         ->group(function ($group) {
         $group->get('/', 'GongYongZhengController@index')->name('index');

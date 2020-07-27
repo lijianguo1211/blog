@@ -65,6 +65,18 @@ window.simplemde = simplemde;
  * allows your team to easily build robust real-time web applications.
  */
 
+window.Vue = require('vue');
+
+import { BootstrapVue, IconsPlugin } from 'bootstrap-vue'
+
+Vue.use(BootstrapVue)
+// Optionally install the BootstrapVue icon components plugin
+Vue.use(IconsPlugin)
+
+const vm = new Vue({
+    el: '#app',
+});
+
 // import Echo from 'laravel-echo';
 
 // window.Pusher = require('pusher-js');
