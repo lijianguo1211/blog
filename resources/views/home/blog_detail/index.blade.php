@@ -142,7 +142,7 @@
                         @endforeach
                     </ul>
                 </div>
-
+                <rankingList :title="121"></rankingList>
                 <div class="p-4">
                     <h4>点击排行榜</h4>
                     <ul class="list-group">

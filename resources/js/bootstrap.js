@@ -19,24 +19,6 @@ try {
 
 require('./blog_detail');
 
-//编辑器 stackedit.js
-// import Stackedit from 'stackedit-js';
-//
-// const el = document.querySelector('textarea');
-// const stackedit = new Stackedit();
-//
-// // Open the iframe
-// stackedit.openFile({
-//     name: 'Filename', // with an optional filename
-//     content: {
-//         text: el.value // and the Markdown content.
-//     }
-// });
-//
-// // Listen to StackEdit events and apply the changes to the textarea.
-// stackedit.on('fileChange', (file) => {
-//     el.value = file.content.text;
-// });
 
 import SimpleMDE from 'simplemde';
 
@@ -65,16 +47,15 @@ window.simplemde = simplemde;
  * allows your team to easily build robust real-time web applications.
  */
 
-window.Vue = require('vue');
+import Vue from "vue";
 
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue'
-
-Vue.use(BootstrapVue)
-// Optionally install the BootstrapVue icon components plugin
-Vue.use(IconsPlugin)
+import rankingList from './components/right/rankingList';
 
 const vm = new Vue({
     el: '#app',
+    components: {
+        rankingList:rankingList
+    }
 });
 
 // import Echo from 'laravel-echo';

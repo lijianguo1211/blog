@@ -258,7 +258,11 @@ class BlogServices implements HomeInterface
             $result = $this->blog->where('post_status', $this->getPostStatus())
                 ->orderByDesc('reading_volume')
                 ->limit($this->getRankingNumber())
-                ->get(['title', 'id', 'reading_volume'])->toArray();
+                ->get(['title', 'id', 'reading_volume'])
+                ->each(function (&$item) {
+                    $item['routeTo'] = route('home.blog_details', ['id' => $item['id']]);
+                })
+                ->toArray();
         } catch (\Exception $e) {
             $result = [
                 'id' => 0,
